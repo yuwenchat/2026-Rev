@@ -4,7 +4,8 @@ import { ref, computed } from 'vue'
 const translations = {
   en: {
     // App
-    appName: 'YuwenChat',
+    appName: '语闻',
+    appSubtitle: 'A way to beat WeChat',
 
     // Auth
     login: 'Login',
@@ -106,7 +107,8 @@ const translations = {
   },
   zh: {
     // App
-    appName: '语文聊天',
+    appName: '语闻',
+    appSubtitle: '是一个干翻微信的方式',
 
     // Auth
     login: '登录',

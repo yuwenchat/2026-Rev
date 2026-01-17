@@ -1,8 +1,8 @@
 <template>
   <div class="auth-page">
     <div class="auth-card">
-      <h1>{{ t('register') }}</h1>
-      <p class="subtitle">{{ t('appName') }}</p>
+      <h1>{{ t('appName') }}</h1>
+      <p class="subtitle">{{ t('appSubtitle') }}</p>
 
       <form @submit.prevent="handleRegister">
         <div class="field">
