@@ -20,6 +20,9 @@ export function setupSocketHandlers(io) {
     // Send current online friends to this user
     sendOnlineFriends(socket, userId);
 
+    // Check for group members who need keys and notify them
+    notifyPendingKeyMembers(io, socket, userId);
+
     // Handle private message
     socket.on('chat:private', (data) => {
       handlePrivateMessage(io, socket, userId, data);
@@ -377,6 +380,39 @@ function joinUserGroups(socket, userId) {
   }
 }
 
+// When a user with keys comes online, notify them about members who need keys
+function notifyPendingKeyMembers(io, socket, userId) {
+  try {
+    // Find groups where current user has a key
+    const groupsWithKey = db.prepare(`
+      SELECT group_id FROM group_members
+      WHERE user_id = ? AND encrypted_group_key != ''
+    `).all(userId);
+
+    groupsWithKey.forEach(({ group_id }) => {
+      // Find members in this group who don't have a key yet
+      const membersNeedingKey = db.prepare(`
+        SELECT gm.user_id, u.username, u.public_key
+        FROM group_members gm
+        JOIN users u ON gm.user_id = u.id
+        WHERE gm.group_id = ? AND gm.user_id != ? AND (gm.encrypted_group_key = '' OR gm.encrypted_group_key IS NULL)
+      `).all(group_id, userId);
+
+      // Send key request notifications to current user for each member needing key
+      membersNeedingKey.forEach(member => {
+        socket.emit('group:keyRequest', {
+          groupId: group_id,
+          requesterId: member.user_id,
+          requesterName: member.username,
+          requesterPublicKey: member.public_key
+        });
+      });
+    });
+  } catch (err) {
+    console.error('Notify pending key members error:', err);
+  }
+}
+
 // Handle request for group key from new member
 function handleGroupKeyRequest(io, socket, userId, data) {
   const { groupId, publicKey } = data;
@@ -449,7 +485,7 @@ function handleGroupKeyShare(io, socket, userId, data) {
 
     // Verify target is a member (who needs the key)
     const targetMembership = db.prepare(`
-      SELECT id FROM group_members WHERE group_id = ? AND user_id = ?
+      SELECT id, encrypted_group_key FROM group_members WHERE group_id = ? AND user_id = ?
     `).get(groupId, targetUserId);
 
     if (!targetMembership) {
@@ -457,7 +493,20 @@ function handleGroupKeyShare(io, socket, userId, data) {
       return;
     }
 
-    // Send key to target user
+    // Store the encrypted key on server for the target user (even if offline)
+    // This allows them to retrieve it later without needing sender to be online
+    if (!targetMembership.encrypted_group_key) {
+      const keyData = JSON.stringify({
+        key: encryptedGroupKey,
+        sharedBy: sharerPublicKey
+      });
+      db.prepare(`
+        UPDATE group_members SET encrypted_group_key = ?
+        WHERE group_id = ? AND user_id = ?
+      `).run(keyData, groupId, targetUserId);
+    }
+
+    // Also send via socket if target is online (for immediate update)
     const targetSocketId = onlineUsers.get(targetUserId);
     if (targetSocketId) {
       io.to(targetSocketId).emit('group:keyReceived', {
