@@ -132,4 +132,43 @@ router.get('/me', authMiddleware, (req, res) => {
   }
 });
 
+// Change password
+router.post('/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { oldPassword, newPassword, newEncryptedPrivateKey } = req.body;
+
+    if (!oldPassword || !newPassword || !newEncryptedPrivateKey) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Get current user
+    const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify old password
+    const valid = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Update password and encrypted private key
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    db.prepare(`
+      UPDATE users SET password_hash = ?, encrypted_private_key = ?
+      WHERE id = ?
+    `).run(newPasswordHash, newEncryptedPrivateKey, req.userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 export default router;

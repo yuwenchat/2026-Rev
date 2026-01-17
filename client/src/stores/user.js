@@ -90,6 +90,20 @@ export const useUserStore = defineStore('user', () => {
     disconnectSocket()
   }
 
+  async function changePassword(oldPassword, newPassword) {
+    // Re-encrypt private key with new password
+    const newEncryptedPrivateKey = await encryptPrivateKey(privateKey.value, newPassword)
+
+    // Send to server
+    await api.changePassword({
+      oldPassword,
+      newPassword,
+      newEncryptedPrivateKey
+    })
+
+    return true
+  }
+
   return {
     user,
     token,
@@ -98,6 +112,7 @@ export const useUserStore = defineStore('user', () => {
     register,
     login,
     restoreSession,
-    logout
+    logout,
+    changePassword
   }
 })

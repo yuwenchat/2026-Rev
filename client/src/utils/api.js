@@ -36,6 +36,11 @@ export const api = {
 
   getMe: () => request('/auth/me'),
 
+  changePassword: (data) => request('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
   // Friends
   searchUser: (code) => request(`/friends/search/${code}`),
 

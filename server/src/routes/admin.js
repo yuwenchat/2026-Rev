@@ -89,9 +89,12 @@ router.put('/users/:id', async (req, res) => {
       db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, userId);
     }
 
+    // Password reset is disabled - it would break user's encrypted private key
+    // Users must change their own password through the settings page
     if (password) {
-      const passwordHash = await bcrypt.hash(password, 10);
-      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
+      return res.status(400).json({
+        error: 'Password reset disabled. Resetting password would destroy the user\'s encrypted private key. Users must change their own password through settings.'
+      });
     }
 
     if (isAdmin !== undefined) {
