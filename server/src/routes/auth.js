@@ -36,15 +36,11 @@ router.post('/register', async (req, res) => {
     // Generate unique friend code
     const friendCode = generateUniqueCode(db, 'users', 'friend_code');
 
-    // Check if this is the first user (make them admin)
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const isAdmin = userCount === 0 ? 1 : 0;
-
-    // Insert user
+    // Insert user (not admin by default)
     const result = db.prepare(`
       INSERT INTO users (username, password_hash, friend_code, public_key, encrypted_private_key, is_admin)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(username, passwordHash, friendCode, publicKey, encryptedPrivateKey, isAdmin);
+      VALUES (?, ?, ?, ?, ?, 0)
+    `).run(username, passwordHash, friendCode, publicKey, encryptedPrivateKey);
 
     const userId = result.lastInsertRowid;
     const token = generateToken(userId);
@@ -55,7 +51,7 @@ router.post('/register', async (req, res) => {
         username,
         friendCode,
         publicKey,
-        isAdmin: !!isAdmin
+        isAdmin: false
       },
       token
     });

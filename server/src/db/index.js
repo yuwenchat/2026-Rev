@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import bcrypt from 'bcrypt';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -49,6 +50,30 @@ function runMigrations() {
   }
 }
 
+// Create default admin user if not exists
+async function createDefaultAdmin() {
+  const adminUser = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+
+  if (!adminUser) {
+    console.log('Creating default admin user (admin/admin1)');
+    const passwordHash = await bcrypt.hash('admin1', 10);
+
+    // Generate a unique friend code for admin
+    let friendCode;
+    do {
+      friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    } while (db.prepare('SELECT id FROM users WHERE friend_code = ?').get(friendCode));
+
+    db.prepare(`
+      INSERT INTO users (username, password_hash, friend_code, public_key, encrypted_private_key, is_admin)
+      VALUES (?, ?, ?, '', '', 1)
+    `).run('admin', passwordHash, friendCode);
+
+    console.log('Default admin created with friend code:', friendCode);
+  }
+}
+
 runMigrations();
+createDefaultAdmin();
 
 export default db;
