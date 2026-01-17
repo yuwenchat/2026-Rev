@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '../utils/api.js'
 import { getSocket } from '../utils/socket.js'
 import { useUserStore } from './user.js'
@@ -12,6 +12,12 @@ import {
   encryptGroupKey,
   decryptGroupKey
 } from '../utils/crypto.js'
+import {
+  sendNotification,
+  updateTitleWithUnread,
+  playNotificationSound,
+  getPermissionStatus
+} from '../utils/notification.js'
 
 export const useChatStore = defineStore('chat', () => {
   const friends = ref([])
@@ -24,7 +30,89 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref([])
   const typingUsers = ref(new Set())
 
+  // Unread message counts: { 'private_123': 2, 'group_456': 5 }
+  const unreadCounts = ref({})
+  // Notification settings
+  const notificationsEnabled = ref(localStorage.getItem('notificationsEnabled') !== 'false')
+
   const userStore = useUserStore()
+
+  // Total unread count for tab title
+  const totalUnread = computed(() => {
+    return Object.values(unreadCounts.value).reduce((sum, count) => sum + count, 0)
+  })
+
+  // Watch total unread and update tab title
+  watch(totalUnread, (count) => {
+    updateTitleWithUnread(count)
+  })
+
+  // Get unread count for a specific chat
+  function getUnreadCount(type, id) {
+    const key = `${type}_${id}`
+    return unreadCounts.value[key] || 0
+  }
+
+  // Increment unread count
+  function incrementUnread(type, id) {
+    const key = `${type}_${id}`
+    unreadCounts.value[key] = (unreadCounts.value[key] || 0) + 1
+  }
+
+  // Clear unread count for a chat
+  function clearUnread(type, id) {
+    const key = `${type}_${id}`
+    if (unreadCounts.value[key]) {
+      delete unreadCounts.value[key]
+      // Trigger reactivity
+      unreadCounts.value = { ...unreadCounts.value }
+    }
+  }
+
+  // Set notification enabled state
+  function setNotificationsEnabled(enabled) {
+    notificationsEnabled.value = enabled
+    localStorage.setItem('notificationsEnabled', enabled ? 'true' : 'false')
+  }
+
+  // Send browser notification for new message
+  function notifyNewMessage(senderName, content, type, id) {
+    if (!notificationsEnabled.value) return
+    if (getPermissionStatus() !== 'granted') return
+
+    // Don't notify if already viewing this chat
+    if (currentChat.value?.type === type && currentChat.value?.id === id) return
+    // Don't notify if window is focused
+    if (document.hasFocus()) return
+
+    // Parse content to get text
+    let text = content
+    try {
+      const parsed = JSON.parse(content)
+      if (parsed.file) {
+        text = parsed.text || `[${parsed.file.name}]`
+      }
+    } catch {
+      // Plain text message
+    }
+
+    // Truncate long messages
+    if (text.length > 50) {
+      text = text.substring(0, 50) + '...'
+    }
+
+    const title = type === 'group' ? `${senderName} (群组)` : senderName
+
+    sendNotification(title, {
+      body: text,
+      tag: `${type}_${id}`,
+      onClick: () => {
+        // Focus will be handled by notification utility
+      }
+    })
+
+    playNotificationSound()
+  }
 
   // Load friends and groups
   async function loadContacts() {
@@ -238,12 +326,17 @@ export const useChatStore = defineStore('chat', () => {
 
   // Select a chat
   async function selectChat(type, contact) {
+    // Clear unread count for this chat
+    clearUnread(type, contact.id)
+
     if (type === 'private') {
       currentChat.value = {
         type: 'private',
         id: contact.id,
         name: contact.username,
-        publicKey: contact.publicKey
+        publicKey: contact.publicKey,
+        avatarUrl: contact.avatarUrl,
+        avatarColor: contact.avatarColor
       }
 
       // Load messages
@@ -386,19 +479,26 @@ export const useChatStore = defineStore('chat', () => {
 
     // Private message received
     socket.on('chat:private', (msg) => {
+      const friend = friends.value.find(f => f.id === msg.senderId)
+      const decryptedContent = decryptMessage(
+        msg.encryptedContent,
+        msg.nonce,
+        friend?.publicKey || '',
+        userStore.privateKey
+      )
+
       if (currentChat.value?.type === 'private' && currentChat.value?.id === msg.senderId) {
-        const friend = friends.value.find(f => f.id === msg.senderId)
+        // Currently viewing this chat
         messages.value.push({
           ...msg,
-          content: decryptMessage(
-            msg.encryptedContent,
-            msg.nonce,
-            friend?.publicKey || '',
-            userStore.privateKey
-          )
+          content: decryptedContent
         })
         // Mark as read immediately since we're viewing this chat
         setTimeout(() => markMessagesAsRead(), 100)
+      } else {
+        // Not viewing this chat - increment unread and notify
+        incrementUnread('private', msg.senderId)
+        notifyNewMessage(friend?.username || 'Unknown', decryptedContent, 'private', msg.senderId)
       }
     })
 
@@ -419,13 +519,37 @@ export const useChatStore = defineStore('chat', () => {
 
     // Group message
     socket.on('chat:group', (msg) => {
+      // Don't process our own messages for notifications
+      if (msg.senderId === userStore.user?.id) {
+        if (currentChat.value?.type === 'group' && currentChat.value?.id === msg.groupId) {
+          messages.value.push({
+            ...msg,
+            content: currentChat.value.groupKey
+              ? decryptGroupMessage(msg.encryptedContent, msg.nonce, currentChat.value.groupKey)
+              : '[No key]'
+          })
+        }
+        return
+      }
+
+      const group = groups.value.find(g => g.id === msg.groupId)
+      let decryptedContent = '[No key]'
+      if (group?.groupKey) {
+        decryptedContent = decryptGroupMessage(msg.encryptedContent, msg.nonce, group.groupKey)
+      }
+
       if (currentChat.value?.type === 'group' && currentChat.value?.id === msg.groupId) {
+        // Currently viewing this group
         messages.value.push({
           ...msg,
           content: currentChat.value.groupKey
             ? decryptGroupMessage(msg.encryptedContent, msg.nonce, currentChat.value.groupKey)
             : '[No key]'
         })
+      } else {
+        // Not viewing this group - increment unread and notify
+        incrementUnread('group', msg.groupId)
+        notifyNewMessage(msg.senderName || 'Unknown', decryptedContent, 'group', msg.groupId)
       }
     })
 
@@ -609,6 +733,9 @@ export const useChatStore = defineStore('chat', () => {
     currentChat,
     messages,
     typingUsers,
+    unreadCounts,
+    totalUnread,
+    notificationsEnabled,
     loadContacts,
     searchUser,
     sendFriendRequest,
@@ -626,6 +753,9 @@ export const useChatStore = defineStore('chat', () => {
     editMessage,
     deleteMessage,
     receiveGroupKey,
-    shareGroupKeyWith
+    shareGroupKeyWith,
+    getUnreadCount,
+    clearUnread,
+    setNotificationsEnabled
   }
 })

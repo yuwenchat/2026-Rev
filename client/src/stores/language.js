@@ -184,7 +184,16 @@ const translations = {
     serverRestarting: 'Server is restarting, please wait...',
     clientChanged: 'Client files changed',
     serverChanged: 'Server files changed',
-    reconnecting: 'Reconnecting...'
+    reconnecting: 'Reconnecting...',
+
+    // Notifications
+    notifications: 'Notifications',
+    enableNotifications: 'Enable Notifications',
+    allowNotifications: 'Allow Browser Notifications',
+    notificationsDenied: 'Notifications are blocked. Please enable them in browser settings.',
+    notificationsUnsupported: 'Notifications are not supported in this browser.',
+    notificationsGranted: 'Browser notifications are enabled',
+    newMessage: 'New message'
   },
   zh: {
     // App
@@ -368,7 +377,16 @@ const translations = {
     serverRestarting: '服务器正在重启，请稍候...',
     clientChanged: '前端文件已更新',
     serverChanged: '后端文件已更新',
-    reconnecting: '正在重新连接...'
+    reconnecting: '正在重新连接...',
+
+    // Notifications
+    notifications: '通知',
+    enableNotifications: '启用通知',
+    allowNotifications: '允许浏览器通知',
+    notificationsDenied: '通知已被浏览器阻止，请在浏览器设置中开启。',
+    notificationsUnsupported: '此浏览器不支持通知功能。',
+    notificationsGranted: '浏览器通知已开启',
+    newMessage: '新消息'
   }
 }
 

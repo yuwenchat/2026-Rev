@@ -79,6 +79,39 @@
         </div>
       </div>
 
+      <!-- Notifications Section -->
+      <div class="section">
+        <h4>{{ t('notifications') || 'Notifications' }}</h4>
+
+        <div class="notification-toggle">
+          <label class="toggle-label">
+            <span>{{ t('enableNotifications') || 'Enable Notifications' }}</span>
+            <div class="toggle-switch" :class="{ active: chatStore.notificationsEnabled }" @click="toggleNotifications">
+              <div class="toggle-slider"></div>
+            </div>
+          </label>
+        </div>
+
+        <p v-if="notificationStatus === 'denied'" class="warning-text">
+          {{ t('notificationsDenied') || 'Notifications are blocked. Please enable them in browser settings.' }}
+        </p>
+        <p v-else-if="notificationStatus === 'unsupported'" class="warning-text">
+          {{ t('notificationsUnsupported') || 'Notifications are not supported in this browser.' }}
+        </p>
+
+        <button
+          v-if="notificationStatus === 'default'"
+          class="enable-notifications-btn"
+          @click="requestNotificationPermission"
+        >
+          {{ t('allowNotifications') || 'Allow Browser Notifications' }}
+        </button>
+
+        <p v-if="notificationStatus === 'granted'" class="success-text notification-enabled">
+          {{ t('notificationsGranted') || 'Browser notifications are enabled' }}
+        </p>
+      </div>
+
       <div class="section">
         <h4>{{ t('security') || 'Security' }}</h4>
         <p class="info-text">
@@ -137,17 +170,23 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { useLanguageStore } from '../stores/language.js'
+import { useChatStore } from '../stores/chat.js'
 import Avatar from './Avatar.vue'
+import { requestPermission, getPermissionStatus } from '../utils/notification.js'
 
 const emit = defineEmits(['close'])
 const router = useRouter()
 const userStore = useUserStore()
 const langStore = useLanguageStore()
+const chatStore = useChatStore()
 const t = computed(() => langStore.t)
+
+// Notification state
+const notificationStatus = ref(getPermissionStatus())
 
 // Avatar colors
 const avatarColors = [
@@ -298,6 +337,19 @@ async function handleChangePassword() {
     passwordError.value = err.message || t.value('passwordChangeFailed') || 'Failed to change password'
   } finally {
     passwordLoading.value = false
+  }
+}
+
+// Notification functions
+function toggleNotifications() {
+  chatStore.setNotificationsEnabled(!chatStore.notificationsEnabled)
+}
+
+async function requestNotificationPermission() {
+  const result = await requestPermission()
+  notificationStatus.value = result
+  if (result === 'granted') {
+    chatStore.setNotificationsEnabled(true)
   }
 }
 </script>
@@ -563,5 +615,83 @@ button.cancel {
   color: var(--success);
   font-size: 0.75rem;
   margin: 0.5rem 0 0;
+}
+
+/* Notification toggle */
+.notification-toggle {
+  margin-bottom: 0.75rem;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.toggle-label span {
+  font-size: 0.875rem;
+}
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.toggle-switch.active {
+  background: var(--primary);
+}
+
+.toggle-slider {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch.active .toggle-slider {
+  transform: translateX(20px);
+}
+
+.enable-notifications-btn {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-size: 0.875rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.enable-notifications-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.warning-text {
+  color: var(--warning, #f59e0b);
+  font-size: 0.75rem;
+  margin: 0.5rem 0 0;
+}
+
+.notification-enabled {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.notification-enabled::before {
+  content: '✓';
 }
 </style>

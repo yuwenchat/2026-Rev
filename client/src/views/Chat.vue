@@ -60,12 +60,20 @@
           :class="{ active: chatStore.currentChat?.type === 'private' && chatStore.currentChat?.id === friend.id }"
           @click="selectChat('private', friend)"
         >
-          <Avatar
-            :name="friend.username"
-            :avatarUrl="friend.avatarUrl"
-            :avatarColor="friend.avatarColor || '#6366f1'"
-            :size="40"
-          />
+          <div class="avatar-wrapper">
+            <Avatar
+              :name="friend.username"
+              :avatarUrl="friend.avatarUrl"
+              :avatarColor="friend.avatarColor || '#6366f1'"
+              :size="40"
+            />
+            <span
+              v-if="chatStore.getUnreadCount('private', friend.id) > 0"
+              class="unread-badge"
+            >
+              {{ chatStore.getUnreadCount('private', friend.id) > 99 ? '99+' : chatStore.getUnreadCount('private', friend.id) }}
+            </span>
+          </div>
           <div class="contact-info">
             <span class="name">{{ friend.username }}</span>
             <span class="status" :class="{ online: chatStore.onlineFriends.has(friend.id) }">
@@ -86,11 +94,19 @@
           :class="{ active: chatStore.currentChat?.type === 'group' && chatStore.currentChat?.id === group.id }"
           @click="selectChat('group', group)"
         >
-          <Avatar
-            :name="group.name"
-            :avatarColor="'#22c55e'"
-            :size="40"
-          />
+          <div class="avatar-wrapper">
+            <Avatar
+              :name="group.name"
+              :avatarColor="'#22c55e'"
+              :size="40"
+            />
+            <span
+              v-if="chatStore.getUnreadCount('group', group.id) > 0"
+              class="unread-badge"
+            >
+              {{ chatStore.getUnreadCount('group', group.id) > 99 ? '99+' : chatStore.getUnreadCount('group', group.id) }}
+            </span>
+          </div>
           <div class="contact-info">
             <span class="name">{{ group.name }}</span>
             <span class="code">{{ group.groupCode }}</span>
@@ -727,6 +743,35 @@ onMounted(async () => {
 .avatar.group {
   border-radius: 12px;
   background: var(--secondary);
+}
+
+/* Avatar wrapper for badge positioning */
+.avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--error);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.contact-item.active .unread-badge {
+  background: white;
+  color: var(--primary);
 }
 
 .contact-info {
