@@ -379,23 +379,28 @@ status 显示 errored = 失败，看日志：pm2 logs yuwenchat --err
 📍 位置：网站设置窗口 → 左侧点「配置文件」
 ```
 
-### 8.3 删除全部内容，粘贴以下配置
+### 8.3 修改配置（保留 SSL 证书配置！）
+
+⚠️ **不要删除原有的 SSL 配置！** 只需要修改/添加以下内容：
+
+找到这些内容并修改：
+```nginx
+# 1. 修改 root 路径（加上 /client/dist）
+root /www/wwwroot/chat.shawntv.co/client/dist;
+
+# 2. 修改 index（去掉 php）
+index index.html index.htm;
+```
+
+然后在配置文件中找个合适的位置（比如 `#REWRITE-END` 后面），添加这三段：
 
 ```nginx
-server {
-    listen 80;
-    server_name chat.shawntv.co;
-
-    # ========== 前端文件 ==========
-    root /www/wwwroot/chat.shawntv.co/client/dist;
-    index index.html;
-
-    # 前端路由
+    # ========== 前端路由（Vue Router）==========
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # ========== 后端API代理 ==========
+    # ========== 后端 API 代理 ==========
     location /api {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -405,7 +410,77 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # ========== WebSocket代理（聊天必须）==========
+    # ========== WebSocket 代理（聊天必须）==========
+    location /socket.io {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+```
+
+### 8.3.1 完整配置参考（已有 SSL 证书的情况）
+
+如果你已经在宝塔申请了 SSL 证书，完整配置应该长这样：
+
+```nginx
+server
+{
+    listen 80;
+    listen 443 ssl http2 ;
+    server_name chat.shawntv.co;
+    index index.html index.htm;
+    root /www/wwwroot/chat.shawntv.co/client/dist;
+
+    #CERT-APPLY-CHECK--START
+    # 用于SSL证书申请时的文件验证相关配置 -- 请勿删除
+    include /www/server/panel/vhost/nginx/well-known/chat.shawntv.co.conf;
+    #CERT-APPLY-CHECK--END
+
+    #SSL-START SSL相关配置，请勿删除或修改下一行带注释的404规则
+    #error_page 404/404.html;
+    ssl_certificate    /www/server/panel/vhost/cert/chat.shawntv.co/fullchain.pem;
+    ssl_certificate_key    /www/server/panel/vhost/cert/chat.shawntv.co/privkey.pem;
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    add_header Strict-Transport-Security "max-age=31536000";
+    error_page 497  https://$host$request_uri;
+    #SSL-END
+
+    #ERROR-PAGE-START  错误页配置，可以注释、删除或修改
+    error_page 404 /404.html;
+    #ERROR-PAGE-END
+
+    #REWRITE-START URL重写规则引用,修改后将导致面板设置的伪静态规则失效
+    include /www/server/panel/vhost/rewrite/chat.shawntv.co.conf;
+    #REWRITE-END
+
+    # ========== 前端路由（Vue Router）==========
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ========== 后端 API 代理 ==========
+    location /api {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ========== WebSocket 代理（聊天必须）==========
     location /socket.io {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -420,9 +495,38 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # 日志
-    access_log /www/wwwlogs/chat.shawntv.co.access.log;
-    error_log /www/wwwlogs/chat.shawntv.co.error.log;
+    #禁止访问的文件或目录
+    location ~ ^/(\.user.ini|\.htaccess|\.git|\.env|\.svn|\.project|LICENSE|README.md)
+    {
+        return 404;
+    }
+
+    #一键申请SSL证书验证目录相关设置
+    location ~ \.well-known{
+        allow all;
+    }
+
+    #禁止在证书验证目录放入敏感文件
+    if ( $uri ~ "^/\.well-known/.*\.(php|jsp|py|js|css|lua|ts|go|zip|tar\.gz|rar|7z|sql|bak)$" ) {
+        return 403;
+    }
+
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$
+    {
+        expires      30d;
+        error_log /dev/null;
+        access_log /dev/null;
+    }
+
+    location ~ .*\.(js|css)?$
+    {
+        expires      12h;
+        error_log /dev/null;
+        access_log /dev/null;
+    }
+
+    access_log  /www/wwwlogs/chat.shawntv.co.log;
+    error_log  /www/wwwlogs/chat.shawntv.co.error.log;
 }
 ```
 
