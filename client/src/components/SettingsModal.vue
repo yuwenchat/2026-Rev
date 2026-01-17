@@ -4,11 +4,61 @@
       <h3>{{ t('settings') }}</h3>
 
       <div class="user-info">
-        <div class="avatar">{{ userStore.user?.username[0].toUpperCase() }}</div>
+        <Avatar
+          :name="userStore.user?.username"
+          :avatarUrl="userStore.user?.avatarUrl"
+          :avatarColor="userStore.user?.avatarColor"
+          :size="56"
+          clickable
+          @click="triggerFileInput"
+        />
         <div class="details">
           <strong>{{ userStore.user?.username }}</strong>
           <span>{{ userStore.user?.friendCode }}</span>
         </div>
+      </div>
+
+      <!-- Avatar Settings -->
+      <div class="section">
+        <h4>{{ t('avatar') || 'Avatar' }}</h4>
+
+        <div class="avatar-actions">
+          <button class="avatar-btn" @click="triggerFileInput">
+            {{ t('uploadAvatar') || 'Upload Image' }}
+          </button>
+          <button
+            v-if="userStore.user?.avatarUrl"
+            class="avatar-btn remove"
+            @click="handleRemoveAvatar"
+          >
+            {{ t('removeAvatar') || 'Remove' }}
+          </button>
+        </div>
+
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/*"
+          style="display: none"
+          @change="handleFileSelect"
+        />
+
+        <div class="color-section">
+          <span class="color-label">{{ t('backgroundColor') || 'Background Color' }}</span>
+          <div class="color-picker">
+            <div
+              v-for="color in avatarColors"
+              :key="color"
+              class="color-option"
+              :style="{ backgroundColor: color }"
+              :class="{ active: userStore.user?.avatarColor === color }"
+              @click="handleColorChange(color)"
+            ></div>
+          </div>
+        </div>
+
+        <p v-if="avatarError" class="error-text">{{ avatarError }}</p>
+        <p v-if="avatarSuccess" class="success-text">{{ avatarSuccess }}</p>
       </div>
 
       <div class="section">
@@ -40,24 +90,24 @@
           class="change-password-btn"
           @click="showPasswordChange = true"
         >
-          {{ t('changePassword') || '修改密码 / Change Password' }}
+          {{ t('changePassword') || 'Change Password' }}
         </button>
 
         <div v-else class="password-form">
           <input
             v-model="oldPassword"
             type="password"
-            :placeholder="t('currentPassword') || '当前密码 / Current Password'"
+            :placeholder="t('currentPassword') || 'Current Password'"
           />
           <input
             v-model="newPassword"
             type="password"
-            :placeholder="t('newPassword') || '新密码 / New Password'"
+            :placeholder="t('newPassword') || 'New Password'"
           />
           <input
             v-model="confirmNewPassword"
             type="password"
-            :placeholder="t('confirmNewPassword') || '确认新密码 / Confirm New Password'"
+            :placeholder="t('confirmNewPassword') || 'Confirm New Password'"
           />
           <p v-if="passwordError" class="error-text">{{ passwordError }}</p>
           <p v-if="passwordSuccess" class="success-text">{{ passwordSuccess }}</p>
@@ -71,7 +121,7 @@
               @click="handleChangePassword"
               :disabled="passwordLoading"
             >
-              {{ passwordLoading ? (t('saving') || '保存中...') : (t('save') || '保存') }}
+              {{ passwordLoading ? (t('saving') || 'Saving...') : (t('save') || 'Save') }}
             </button>
           </div>
         </div>
@@ -91,12 +141,34 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { useLanguageStore } from '../stores/language.js'
+import Avatar from './Avatar.vue'
 
 const emit = defineEmits(['close'])
 const router = useRouter()
 const userStore = useUserStore()
 const langStore = useLanguageStore()
 const t = computed(() => langStore.t)
+
+// Avatar colors
+const avatarColors = [
+  '#6366f1', // Indigo (default)
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#ef4444', // Red
+  '#f97316', // Orange
+  '#eab308', // Yellow
+  '#22c55e', // Green
+  '#14b8a6', // Teal
+  '#06b6d4', // Cyan
+  '#3b82f6', // Blue
+  '#64748b', // Slate
+  '#171717'  // Black
+]
+
+// Avatar state
+const fileInput = ref(null)
+const avatarError = ref('')
+const avatarSuccess = ref('')
 
 // Password change state
 const showPasswordChange = ref(false)
@@ -110,6 +182,74 @@ const passwordLoading = ref(false)
 function handleLogout() {
   userStore.logout()
   router.push('/login')
+}
+
+function triggerFileInput() {
+  fileInput.value?.click()
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  avatarError.value = ''
+  avatarSuccess.value = ''
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    avatarError.value = t.value('invalidImageType') || 'Please select an image file'
+    return
+  }
+
+  // Validate file size (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    avatarError.value = t.value('imageTooLarge') || 'Image too large (max 2MB)'
+    return
+  }
+
+  try {
+    // Convert to base64
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        await userStore.uploadAvatar(e.target.result)
+        avatarSuccess.value = t.value('avatarUpdated') || 'Avatar updated!'
+        setTimeout(() => avatarSuccess.value = '', 2000)
+      } catch (err) {
+        avatarError.value = err.message || t.value('avatarUploadFailed') || 'Failed to upload avatar'
+      }
+    }
+    reader.readAsDataURL(file)
+  } catch (err) {
+    avatarError.value = err.message || t.value('avatarUploadFailed') || 'Failed to upload avatar'
+  }
+
+  // Clear input
+  event.target.value = ''
+}
+
+async function handleRemoveAvatar() {
+  avatarError.value = ''
+  avatarSuccess.value = ''
+
+  try {
+    await userStore.removeAvatar()
+    avatarSuccess.value = t.value('avatarRemoved') || 'Avatar removed'
+    setTimeout(() => avatarSuccess.value = '', 2000)
+  } catch (err) {
+    avatarError.value = err.message || t.value('avatarRemoveFailed') || 'Failed to remove avatar'
+  }
+}
+
+async function handleColorChange(color) {
+  avatarError.value = ''
+  avatarSuccess.value = ''
+
+  try {
+    await userStore.updateAvatarColor(color)
+  } catch (err) {
+    avatarError.value = err.message || t.value('colorChangeFailed') || 'Failed to change color'
+  }
 }
 
 function cancelPasswordChange() {
@@ -127,17 +267,17 @@ async function handleChangePassword() {
 
   // Validation
   if (!oldPassword.value || !newPassword.value || !confirmNewPassword.value) {
-    passwordError.value = t.value('fillAllFields') || '请填写所有字段 / Please fill all fields'
+    passwordError.value = t.value('fillAllFields') || 'Please fill all fields'
     return
   }
 
   if (newPassword.value.length < 6) {
-    passwordError.value = t.value('passwordTooShort') || '密码至少6个字符 / Password must be at least 6 characters'
+    passwordError.value = t.value('passwordTooShort') || 'Password must be at least 6 characters'
     return
   }
 
   if (newPassword.value !== confirmNewPassword.value) {
-    passwordError.value = t.value('passwordMismatch') || '两次密码不一致 / Passwords do not match'
+    passwordError.value = t.value('passwordMismatch') || 'Passwords do not match'
     return
   }
 
@@ -145,7 +285,7 @@ async function handleChangePassword() {
 
   try {
     await userStore.changePassword(oldPassword.value, newPassword.value)
-    passwordSuccess.value = t.value('passwordChanged') || '密码已修改 / Password changed successfully'
+    passwordSuccess.value = t.value('passwordChanged') || 'Password changed successfully'
     oldPassword.value = ''
     newPassword.value = ''
     confirmNewPassword.value = ''
@@ -155,7 +295,7 @@ async function handleChangePassword() {
       passwordSuccess.value = ''
     }, 2000)
   } catch (err) {
-    passwordError.value = err.message || t.value('passwordChangeFailed') || '修改密码失败 / Failed to change password'
+    passwordError.value = err.message || t.value('passwordChangeFailed') || 'Failed to change password'
   } finally {
     passwordLoading.value = false
   }
@@ -179,7 +319,9 @@ async function handleChangePassword() {
   border-radius: 12px;
   padding: 1.5rem;
   width: 100%;
-  max-width: 320px;
+  max-width: 360px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 h3 {
@@ -200,19 +342,6 @@ h4 {
   background: var(--bg);
   border-radius: 8px;
   margin-bottom: 1rem;
-}
-
-.avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  font-weight: 600;
 }
 
 .details strong {
@@ -238,6 +367,74 @@ h4 {
   color: var(--text-secondary);
   margin: 0.5rem 0;
   line-height: 1.4;
+}
+
+/* Avatar settings */
+.avatar-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.avatar-btn {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.avatar-btn:hover {
+  background: var(--border);
+}
+
+.avatar-btn.remove {
+  flex: 0 0 auto;
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.avatar-btn.remove:hover {
+  background: var(--error);
+  color: white;
+}
+
+.color-section {
+  margin-top: 0.5rem;
+}
+
+.color-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.color-option {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+}
+
+.color-option.active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--card-bg);
 }
 
 .language-select {
@@ -359,12 +556,12 @@ button.cancel {
 .error-text {
   color: var(--error);
   font-size: 0.75rem;
-  margin: 0;
+  margin: 0.5rem 0 0;
 }
 
 .success-text {
   color: var(--success);
   font-size: 0.75rem;
-  margin: 0;
+  margin: 0.5rem 0 0;
 }
 </style>

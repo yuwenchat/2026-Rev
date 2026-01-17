@@ -104,6 +104,29 @@ export const useUserStore = defineStore('user', () => {
     return true
   }
 
+  async function updateAvatarColor(color) {
+    const result = await api.updateAvatarColor(color)
+    if (user.value) {
+      user.value.avatarColor = color
+    }
+    return result
+  }
+
+  async function uploadAvatar(imageData) {
+    const result = await api.uploadAvatar(imageData)
+    if (user.value) {
+      user.value.avatarUrl = result.avatarUrl
+    }
+    return result
+  }
+
+  async function removeAvatar() {
+    await api.removeAvatar()
+    if (user.value) {
+      user.value.avatarUrl = null
+    }
+  }
+
   return {
     user,
     token,
@@ -113,6 +136,9 @@ export const useUserStore = defineStore('user', () => {
     login,
     restoreSession,
     logout,
-    changePassword
+    changePassword,
+    updateAvatarColor,
+    uploadAvatar,
+    removeAvatar
   }
 })

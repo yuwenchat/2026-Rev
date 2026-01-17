@@ -41,6 +41,21 @@ export const api = {
     body: JSON.stringify(data)
   }),
 
+  // Avatar
+  updateAvatarColor: (color) => request('/auth/avatar/color', {
+    method: 'POST',
+    body: JSON.stringify({ color })
+  }),
+
+  uploadAvatar: (image) => request('/auth/avatar/upload', {
+    method: 'POST',
+    body: JSON.stringify({ image })
+  }),
+
+  removeAvatar: () => request('/auth/avatar', {
+    method: 'DELETE'
+  }),
+
   // Friends
   searchUser: (code) => request(`/friends/search/${code}`),
 

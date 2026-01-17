@@ -60,7 +60,12 @@
           :class="{ active: chatStore.currentChat?.type === 'private' && chatStore.currentChat?.id === friend.id }"
           @click="selectChat('private', friend)"
         >
-          <div class="avatar">{{ friend.username[0].toUpperCase() }}</div>
+          <Avatar
+            :name="friend.username"
+            :avatarUrl="friend.avatarUrl"
+            :avatarColor="friend.avatarColor || '#6366f1'"
+            :size="40"
+          />
           <div class="contact-info">
             <span class="name">{{ friend.username }}</span>
             <span class="status" :class="{ online: chatStore.onlineFriends.has(friend.id) }">
@@ -81,7 +86,11 @@
           :class="{ active: chatStore.currentChat?.type === 'group' && chatStore.currentChat?.id === group.id }"
           @click="selectChat('group', group)"
         >
-          <div class="avatar group">{{ group.name[0].toUpperCase() }}</div>
+          <Avatar
+            :name="group.name"
+            :avatarColor="'#22c55e'"
+            :size="40"
+          />
           <div class="contact-info">
             <span class="name">{{ group.name }}</span>
             <span class="code">{{ group.groupCode }}</span>
@@ -113,6 +122,12 @@
       <!-- Chat window -->
       <template v-else>
         <div class="chat-header">
+          <Avatar
+            :name="chatStore.currentChat.name"
+            :avatarUrl="chatStore.currentChat.type === 'private' ? chatStore.currentChat.avatarUrl : null"
+            :avatarColor="chatStore.currentChat.type === 'private' ? (chatStore.currentChat.avatarColor || '#6366f1') : '#22c55e'"
+            :size="40"
+          />
           <div class="chat-info">
             <h3>{{ chatStore.currentChat.name }}</h3>
             <span v-if="chatStore.currentChat.type === 'group'" class="group-code">
@@ -303,6 +318,7 @@ import CreateGroupModal from '../components/CreateGroupModal.vue'
 import JoinGroupModal from '../components/JoinGroupModal.vue'
 import SettingsModal from '../components/SettingsModal.vue'
 import SecurityModal from '../components/SecurityModal.vue'
+import Avatar from '../components/Avatar.vue'
 import { generateSecurityEmojis } from '../utils/crypto.js'
 
 const router = useRouter()
@@ -831,9 +847,13 @@ onMounted(async () => {
   padding: 1rem;
   background: var(--card-bg);
   border-bottom: 1px solid var(--border);
+  gap: 0.75rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+}
+
+.chat-header .chat-info {
+  flex: 1;
 }
 
 .chat-info h3 {

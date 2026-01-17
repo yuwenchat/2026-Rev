@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
   public_key TEXT NOT NULL,
   encrypted_private_key TEXT NOT NULL,
   is_admin INTEGER DEFAULT 0,
+  avatar_url TEXT,
+  avatar_color TEXT DEFAULT '#6366f1',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

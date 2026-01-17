@@ -87,6 +87,19 @@ const translations = {
     passwordChangeFailed: 'Failed to change password',
     saving: 'Saving...',
 
+    // Avatar
+    avatar: 'Avatar',
+    uploadAvatar: 'Upload Image',
+    removeAvatar: 'Remove',
+    backgroundColor: 'Background Color',
+    avatarUpdated: 'Avatar updated!',
+    avatarRemoved: 'Avatar removed',
+    avatarUploadFailed: 'Failed to upload avatar',
+    avatarRemoveFailed: 'Failed to remove avatar',
+    colorChangeFailed: 'Failed to change color',
+    invalidImageType: 'Please select an image file',
+    imageTooLarge: 'Image too large (max 2MB)',
+
     // Admin
     adminPanel: 'Admin Panel',
     backToChat: 'Back to Chat',
@@ -257,6 +270,19 @@ const translations = {
     passwordChanged: '密码修改成功',
     passwordChangeFailed: '修改密码失败',
     saving: '保存中...',
+
+    // Avatar
+    avatar: '头像',
+    uploadAvatar: '上传图片',
+    removeAvatar: '移除',
+    backgroundColor: '背景颜色',
+    avatarUpdated: '头像已更新！',
+    avatarRemoved: '头像已移除',
+    avatarUploadFailed: '上传头像失败',
+    avatarRemoveFailed: '移除头像失败',
+    colorChangeFailed: '更换颜色失败',
+    invalidImageType: '请选择图片文件',
+    imageTooLarge: '图片太大（最大2MB）',
 
     // Admin
     adminPanel: '管理员面板',

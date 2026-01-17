@@ -48,6 +48,14 @@ function runMigrations() {
     db.exec('ALTER TABLE messages ADD COLUMN deleted_for_sender INTEGER DEFAULT 0');
     db.exec('ALTER TABLE messages ADD COLUMN deleted_for_receiver INTEGER DEFAULT 0');
   }
+
+  // Check if avatar columns exist in users
+  const hasAvatarUrl = columns.some(col => col.name === 'avatar_url');
+  if (!hasAvatarUrl) {
+    console.log('Migration: Adding avatar columns to users table');
+    db.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT');
+    db.exec("ALTER TABLE users ADD COLUMN avatar_color TEXT DEFAULT '#6366f1'");
+  }
 }
 
 // Create default admin user if not exists

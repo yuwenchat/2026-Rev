@@ -10,7 +10,7 @@ router.get('/search/:code', authMiddleware, (req, res) => {
     const { code } = req.params;
 
     const user = db.prepare(`
-      SELECT id, username, friend_code, public_key
+      SELECT id, username, friend_code, public_key, avatar_url, avatar_color
       FROM users WHERE friend_code = ?
     `).get(code.toUpperCase());
 
@@ -26,7 +26,9 @@ router.get('/search/:code', authMiddleware, (req, res) => {
       id: user.id,
       username: user.username,
       friendCode: user.friend_code,
-      publicKey: user.public_key
+      publicKey: user.public_key,
+      avatarUrl: user.avatar_url,
+      avatarColor: user.avatar_color || '#6366f1'
     });
   } catch (err) {
     console.error('Search error:', err);
@@ -149,12 +151,20 @@ router.get('/', authMiddleware, (req, res) => {
         CASE
           WHEN f.user_id = ? THEN u2.public_key
           ELSE u1.public_key
-        END as publicKey
+        END as publicKey,
+        CASE
+          WHEN f.user_id = ? THEN u2.avatar_url
+          ELSE u1.avatar_url
+        END as avatarUrl,
+        CASE
+          WHEN f.user_id = ? THEN u2.avatar_color
+          ELSE u1.avatar_color
+        END as avatarColor
       FROM friends f
       JOIN users u1 ON f.user_id = u1.id
       JOIN users u2 ON f.friend_id = u2.id
       WHERE f.user_id = ? OR f.friend_id = ?
-    `).all(req.userId, req.userId, req.userId, req.userId, req.userId, req.userId);
+    `).all(req.userId, req.userId, req.userId, req.userId, req.userId, req.userId, req.userId, req.userId);
 
     // Separate into accepted friends and pending requests
     const accepted = friends.filter(f => f.status === 'accepted');
