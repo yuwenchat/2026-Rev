@@ -46,18 +46,18 @@ router.post('/', authMiddleware, (req, res) => {
   }
 });
 
-// Join group by code
+// Join group by code (without key - key will be shared via socket by existing members)
 router.post('/join', authMiddleware, (req, res) => {
   try {
-    const { groupCode, encryptedGroupKey } = req.body;
+    const { groupCode } = req.body;
 
-    if (!groupCode || !encryptedGroupKey) {
-      return res.status(400).json({ error: 'Group code and encrypted key required' });
+    if (!groupCode) {
+      return res.status(400).json({ error: 'Group code required' });
     }
 
     // Find group
     const group = db.prepare(`
-      SELECT id, name, group_code FROM groups WHERE group_code = ?
+      SELECT id, name, group_code, creator_id FROM groups WHERE group_code = ?
     `).get(groupCode.toUpperCase());
 
     if (!group) {
@@ -73,21 +73,72 @@ router.post('/join', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'Already a member of this group' });
     }
 
-    // Add as member
+    // Get user's public key for key sharing
+    const user = db.prepare('SELECT username, public_key FROM users WHERE id = ?').get(req.userId);
+
+    // Add as member without key (will be received via socket)
     db.prepare(`
       INSERT INTO group_members (group_id, user_id, encrypted_group_key, role)
-      VALUES (?, ?, ?, 'member')
-    `).run(group.id, req.userId, encryptedGroupKey);
+      VALUES (?, ?, '', 'member')
+    `).run(group.id, req.userId);
+
+    // Get existing members who have the key (for socket notification)
+    const existingMembers = db.prepare(`
+      SELECT user_id FROM group_members
+      WHERE group_id = ? AND user_id != ? AND encrypted_group_key != ''
+    `).all(group.id, req.userId);
 
     res.json({
       id: group.id,
       name: group.name,
       groupCode: group.group_code,
-      role: 'member'
+      role: 'member',
+      needsKey: true,
+      newMemberId: req.userId,
+      newMemberUsername: user.username,
+      newMemberPublicKey: user.public_key,
+      existingMemberIds: existingMembers.map(m => m.user_id)
     });
   } catch (err) {
     console.error('Join group error:', err);
     res.status(500).json({ error: 'Failed to join group' });
+  }
+});
+
+// Save group key (after receiving from another member via socket)
+router.put('/:id/key', authMiddleware, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { encryptedGroupKey, sharedByPublicKey } = req.body;
+
+    if (!encryptedGroupKey) {
+      return res.status(400).json({ error: 'Encrypted group key required' });
+    }
+
+    // Check if user is a member
+    const membership = db.prepare(`
+      SELECT id FROM group_members WHERE group_id = ? AND user_id = ?
+    `).get(id, req.userId);
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Not a member of this group' });
+    }
+
+    // Store the encrypted key along with who shared it (needed for decryption)
+    const keyData = JSON.stringify({
+      key: encryptedGroupKey,
+      sharedBy: sharedByPublicKey
+    });
+
+    db.prepare(`
+      UPDATE group_members SET encrypted_group_key = ?
+      WHERE group_id = ? AND user_id = ?
+    `).run(keyData, id, req.userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update group key error:', err);
+    res.status(500).json({ error: 'Failed to update group key' });
   }
 });
 

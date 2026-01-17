@@ -36,7 +36,55 @@ export const useChatStore = defineStore('chat', () => {
     friends.value = friendsData.friends
     pendingReceived.value = friendsData.pendingReceived
     pendingSent.value = friendsData.pendingSent
-    groups.value = groupsData
+
+    // Process groups and try to decrypt keys
+    groups.value = groupsData.map(group => {
+      let groupKey = null
+      let needsKey = true
+
+      if (group.encryptedGroupKey) {
+        try {
+          // Try new format first (with sharedBy info)
+          const keyData = JSON.parse(group.encryptedGroupKey)
+          if (keyData.key && keyData.sharedBy) {
+            groupKey = decryptGroupKey(
+              keyData.key,
+              keyData.sharedBy,
+              userStore.privateKey
+            )
+            needsKey = false
+          } else {
+            // Old format
+            groupKey = decryptGroupKey(
+              group.encryptedGroupKey,
+              userStore.user.publicKey,
+              userStore.privateKey
+            )
+            needsKey = false
+          }
+        } catch {
+          // Try old format as fallback
+          try {
+            groupKey = decryptGroupKey(
+              group.encryptedGroupKey,
+              userStore.user.publicKey,
+              userStore.privateKey
+            )
+            needsKey = false
+          } catch {
+            // Key decryption failed
+            groupKey = null
+            needsKey = true
+          }
+        }
+      }
+
+      return {
+        ...group,
+        groupKey,
+        needsKey
+      }
+    })
   }
 
   // Search user by friend code
@@ -77,24 +125,104 @@ export const useChatStore = defineStore('chat', () => {
     return result
   }
 
-  // Join group
+  // Join group - key will be received from existing members via socket
   async function joinGroup(groupCode) {
-    // For simplicity, using self-encrypted group key
-    // In real app, would need key exchange with existing members
-    const groupKey = generateGroupKey()
-    const encryptedGroupKey = encryptGroupKey(
-      groupKey,
-      userStore.user.publicKey,
+    const result = await api.joinGroup({ groupCode })
+
+    // Add to groups list (without key for now)
+    groups.value.push({
+      id: result.id,
+      name: result.name,
+      groupCode: result.groupCode,
+      role: result.role,
+      needsKey: true,
+      groupKey: null
+    })
+
+    const socket = getSocket()
+    if (socket) {
+      // Join socket room
+      socket.emit('join:groups')
+
+      // Request key from existing members
+      socket.emit('group:requestKey', {
+        groupId: result.id,
+        publicKey: userStore.user.publicKey
+      })
+    }
+
+    return result
+  }
+
+  // Handle receiving group key from another member
+  async function receiveGroupKey(groupId, encryptedGroupKey, sharerPublicKey) {
+    try {
+      // Decrypt the group key
+      const groupKey = decryptGroupKey(
+        encryptedGroupKey,
+        sharerPublicKey,
+        userStore.privateKey
+      )
+
+      // Save to server (re-encrypt for ourselves)
+      const reEncryptedKey = encryptGroupKey(
+        groupKey,
+        userStore.user.publicKey,
+        userStore.privateKey
+      )
+      await api.saveGroupKey(groupId, reEncryptedKey, userStore.user.publicKey)
+
+      // Update local group
+      const group = groups.value.find(g => g.id === groupId)
+      if (group) {
+        group.groupKey = groupKey
+        group.needsKey = false
+      }
+
+      // Update current chat if viewing this group
+      if (currentChat.value?.type === 'group' && currentChat.value?.id === groupId) {
+        currentChat.value.groupKey = groupKey
+
+        // Re-decrypt messages now that we have the key
+        messages.value = messages.value.map(m => ({
+          ...m,
+          content: decryptGroupMessage(m.encryptedContent, m.nonce, groupKey)
+        }))
+      }
+
+      return true
+    } catch (err) {
+      console.error('Failed to receive group key:', err)
+      return false
+    }
+  }
+
+  // Share group key with a new member (called when we receive a key request)
+  function shareGroupKeyWith(groupId, targetUserId, targetPublicKey) {
+    const group = groups.value.find(g => g.id === groupId)
+    if (!group?.groupKey) {
+      console.error('Cannot share key - we do not have it')
+      return false
+    }
+
+    // Encrypt our group key for the new member
+    const encryptedKeyForTarget = encryptGroupKey(
+      group.groupKey,
+      targetPublicKey,
       userStore.privateKey
     )
 
-    const result = await api.joinGroup({ groupCode, encryptedGroupKey })
-    groups.value.push({ ...result, groupKey })
+    const socket = getSocket()
+    if (socket) {
+      socket.emit('group:shareKey', {
+        groupId,
+        targetUserId,
+        encryptedGroupKey: encryptedKeyForTarget,
+        sharerPublicKey: userStore.user.publicKey
+      })
+    }
 
-    // Join socket room
-    getSocket()?.emit('join:groups')
-
-    return result
+    return true
   }
 
   // Leave group
@@ -133,16 +261,38 @@ export const useChatStore = defineStore('chat', () => {
       // Group chat
       const groupData = await api.getGroup(contact.id)
 
-      // Decrypt group key
-      let groupKey
-      try {
-        groupKey = decryptGroupKey(
-          groupData.encryptedGroupKey,
-          userStore.user.publicKey,
-          userStore.privateKey
-        )
-      } catch {
-        groupKey = null
+      // Decrypt group key - handle both old and new format
+      let groupKey = null
+      if (groupData.encryptedGroupKey) {
+        try {
+          // Try new format first (with sharedBy info)
+          const keyData = JSON.parse(groupData.encryptedGroupKey)
+          if (keyData.key && keyData.sharedBy) {
+            groupKey = decryptGroupKey(
+              keyData.key,
+              keyData.sharedBy,
+              userStore.privateKey
+            )
+          } else {
+            // Old format - self-encrypted
+            groupKey = decryptGroupKey(
+              groupData.encryptedGroupKey,
+              userStore.user.publicKey,
+              userStore.privateKey
+            )
+          }
+        } catch {
+          // Try old format as fallback
+          try {
+            groupKey = decryptGroupKey(
+              groupData.encryptedGroupKey,
+              userStore.user.publicKey,
+              userStore.privateKey
+            )
+          } catch {
+            groupKey = null
+          }
+        }
       }
 
       currentChat.value = {
@@ -337,6 +487,19 @@ export const useChatStore = defineStore('chat', () => {
         messages.value = messages.value.filter(m => m.id !== messageId)
       }
     })
+
+    // Group key request - someone is asking for the key
+    socket.on('group:keyRequest', ({ groupId, requesterId, requesterName, requesterPublicKey }) => {
+      console.log(`Key request from ${requesterName} for group ${groupId}`)
+      // Automatically share our key if we have it
+      shareGroupKeyWith(groupId, requesterId, requesterPublicKey)
+    })
+
+    // Group key received - we received a key from another member
+    socket.on('group:keyReceived', async ({ groupId, encryptedGroupKey, sharerPublicKey }) => {
+      console.log(`Received group key for group ${groupId}`)
+      await receiveGroupKey(groupId, encryptedGroupKey, sharerPublicKey)
+    })
   }
 
   // Send typing indicator
@@ -461,6 +624,8 @@ export const useChatStore = defineStore('chat', () => {
     sendTyping,
     markMessagesAsRead,
     editMessage,
-    deleteMessage
+    deleteMessage,
+    receiveGroupKey,
+    shareGroupKeyWith
   }
 })

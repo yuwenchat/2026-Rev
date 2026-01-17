@@ -55,6 +55,16 @@ export function setupSocketHandlers(io) {
       joinUserGroups(socket, userId);
     });
 
+    // Request group key from existing members
+    socket.on('group:requestKey', (data) => {
+      handleGroupKeyRequest(io, socket, userId, data);
+    });
+
+    // Share group key with a new member
+    socket.on('group:shareKey', (data) => {
+      handleGroupKeyShare(io, socket, userId, data);
+    });
+
     // Handle disconnect
     socket.on('disconnect', () => {
       console.log(`User ${userId} disconnected`);
@@ -364,5 +374,101 @@ function joinUserGroups(socket, userId) {
     });
   } catch (err) {
     console.error('Join groups error:', err);
+  }
+}
+
+// Handle request for group key from new member
+function handleGroupKeyRequest(io, socket, userId, data) {
+  const { groupId, publicKey } = data;
+
+  if (!groupId || !publicKey) {
+    socket.emit('error', { message: 'Invalid key request data' });
+    return;
+  }
+
+  try {
+    // Verify user is a member
+    const membership = db.prepare(`
+      SELECT id FROM group_members WHERE group_id = ? AND user_id = ?
+    `).get(groupId, userId);
+
+    if (!membership) {
+      socket.emit('error', { message: 'Not a member of this group' });
+      return;
+    }
+
+    // Get user info
+    const user = db.prepare('SELECT username FROM users WHERE id = ?').get(userId);
+
+    // Send request to all members who have the key
+    const membersWithKey = db.prepare(`
+      SELECT user_id FROM group_members
+      WHERE group_id = ? AND user_id != ? AND encrypted_group_key != ''
+    `).all(groupId, userId);
+
+    membersWithKey.forEach(({ user_id }) => {
+      const memberSocketId = onlineUsers.get(user_id);
+      if (memberSocketId) {
+        io.to(memberSocketId).emit('group:keyRequest', {
+          groupId,
+          requesterId: userId,
+          requesterName: user.username,
+          requesterPublicKey: publicKey
+        });
+      }
+    });
+
+    // Also join the group room
+    socket.join(`group:${groupId}`);
+  } catch (err) {
+    console.error('Group key request error:', err);
+    socket.emit('error', { message: 'Failed to request group key' });
+  }
+}
+
+// Handle sharing group key with new member
+function handleGroupKeyShare(io, socket, userId, data) {
+  const { groupId, targetUserId, encryptedGroupKey, sharerPublicKey } = data;
+
+  if (!groupId || !targetUserId || !encryptedGroupKey || !sharerPublicKey) {
+    socket.emit('error', { message: 'Invalid key share data' });
+    return;
+  }
+
+  try {
+    // Verify sender has the key
+    const senderMembership = db.prepare(`
+      SELECT encrypted_group_key FROM group_members
+      WHERE group_id = ? AND user_id = ? AND encrypted_group_key != ''
+    `).get(groupId, userId);
+
+    if (!senderMembership) {
+      socket.emit('error', { message: 'You do not have the group key' });
+      return;
+    }
+
+    // Verify target is a member (who needs the key)
+    const targetMembership = db.prepare(`
+      SELECT id FROM group_members WHERE group_id = ? AND user_id = ?
+    `).get(groupId, targetUserId);
+
+    if (!targetMembership) {
+      socket.emit('error', { message: 'Target is not a member of this group' });
+      return;
+    }
+
+    // Send key to target user
+    const targetSocketId = onlineUsers.get(targetUserId);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('group:keyReceived', {
+        groupId,
+        encryptedGroupKey,
+        sharerPublicKey,
+        sharerId: userId
+      });
+    }
+  } catch (err) {
+    console.error('Group key share error:', err);
+    socket.emit('error', { message: 'Failed to share group key' });
   }
 }

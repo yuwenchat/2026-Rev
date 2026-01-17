@@ -74,6 +74,11 @@ export const api = {
     method: 'DELETE'
   }),
 
+  saveGroupKey: (groupId, encryptedGroupKey, sharedByPublicKey) => request(`/groups/${groupId}/key`, {
+    method: 'PUT',
+    body: JSON.stringify({ encryptedGroupKey, sharedByPublicKey })
+  }),
+
   // Messages
   getPrivateMessages: (friendId, params) => {
     const query = new URLSearchParams(params).toString()
