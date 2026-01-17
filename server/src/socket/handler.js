@@ -40,6 +40,16 @@ export function setupSocketHandlers(io) {
       handleMessageRead(io, userId, data);
     });
 
+    // Handle message edit
+    socket.on('chat:edit', (data) => {
+      handleMessageEdit(io, socket, userId, data);
+    });
+
+    // Handle message delete
+    socket.on('chat:delete', (data) => {
+      handleMessageDelete(io, socket, userId, data);
+    });
+
     // Join group rooms
     socket.on('join:groups', () => {
       joinUserGroups(socket, userId);
@@ -190,6 +200,113 @@ function handleMessageRead(io, userId, data) {
     }
   } catch (err) {
     console.error('Mark read error:', err);
+  }
+}
+
+function handleMessageEdit(io, socket, userId, data) {
+  const { messageId, encryptedContent, nonce, receiverId, groupId } = data;
+
+  if (!messageId || !encryptedContent || !nonce) {
+    socket.emit('error', { message: 'Invalid edit data' });
+    return;
+  }
+
+  try {
+    // Check if message belongs to user
+    const message = db.prepare('SELECT sender_id FROM messages WHERE id = ?').get(messageId);
+
+    if (!message || message.sender_id !== userId) {
+      socket.emit('error', { message: 'Cannot edit this message' });
+      return;
+    }
+
+    // Update message
+    db.prepare(`
+      UPDATE messages SET encrypted_content = ?, nonce = ?, edited_at = datetime('now')
+      WHERE id = ?
+    `).run(encryptedContent, nonce, messageId);
+
+    const editedAt = new Date().toISOString();
+
+    // Notify the other party
+    if (receiverId) {
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit('chat:edited', {
+          messageId,
+          encryptedContent,
+          nonce,
+          editedAt
+        });
+      }
+    } else if (groupId) {
+      io.to(`group:${groupId}`).emit('chat:edited', {
+        messageId,
+        encryptedContent,
+        nonce,
+        editedAt
+      });
+    }
+
+    // Confirm to sender
+    socket.emit('chat:edited', { messageId, encryptedContent, nonce, editedAt });
+  } catch (err) {
+    console.error('Edit message error:', err);
+    socket.emit('error', { message: 'Failed to edit message' });
+  }
+}
+
+function handleMessageDelete(io, socket, userId, data) {
+  const { messageId, forBoth, receiverId, groupId } = data;
+
+  if (!messageId) {
+    socket.emit('error', { message: 'Invalid delete data' });
+    return;
+  }
+
+  try {
+    const message = db.prepare('SELECT sender_id, receiver_id FROM messages WHERE id = ?').get(messageId);
+
+    if (!message) {
+      socket.emit('error', { message: 'Message not found' });
+      return;
+    }
+
+    const isSender = message.sender_id === userId;
+    const isReceiver = message.receiver_id === userId;
+
+    if (!isSender && !isReceiver) {
+      socket.emit('error', { message: 'Cannot delete this message' });
+      return;
+    }
+
+    if (forBoth && isSender) {
+      // Delete for both parties
+      db.prepare('DELETE FROM messages WHERE id = ?').run(messageId);
+
+      // Notify receiver
+      if (receiverId) {
+        const receiverSocketId = onlineUsers.get(receiverId);
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit('chat:deleted', { messageId, deletedForBoth: true });
+        }
+      } else if (groupId) {
+        io.to(`group:${groupId}`).emit('chat:deleted', { messageId, deletedForBoth: true });
+      }
+    } else {
+      // Soft delete for current user only
+      if (isSender) {
+        db.prepare('UPDATE messages SET deleted_for_sender = 1 WHERE id = ?').run(messageId);
+      } else {
+        db.prepare('UPDATE messages SET deleted_for_receiver = 1 WHERE id = ?').run(messageId);
+      }
+    }
+
+    // Confirm to sender
+    socket.emit('chat:deleted', { messageId, deletedForBoth: forBoth && isSender });
+  } catch (err) {
+    console.error('Delete message error:', err);
+    socket.emit('error', { message: 'Failed to delete message' });
   }
 }
 

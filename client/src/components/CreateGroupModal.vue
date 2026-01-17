@@ -1,14 +1,14 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <h3>Create Group</h3>
+      <h3>{{ t('newGroup') }}</h3>
 
       <div class="field">
-        <label>Group Name</label>
+        <label>{{ t('groupName') }}</label>
         <input
           v-model="name"
           type="text"
-          placeholder="Enter group name"
+          :placeholder="t('groupName')"
           maxlength="50"
         />
       </div>
@@ -16,9 +16,9 @@
       <p v-if="error" class="error">{{ error }}</p>
 
       <div v-if="createdGroup" class="success">
-        <p>Group created!</p>
+        <p>{{ t('requestSent') }}</p>
         <div class="code-display">
-          <span>Share this code:</span>
+          <span>{{ t('groupCode') }}:</span>
           <strong>{{ createdGroup.groupCode }}</strong>
         </div>
       </div>
@@ -28,22 +28,25 @@
         @click="createGroup"
         :disabled="!name.trim() || loading"
       >
-        {{ loading ? 'Creating...' : 'Create Group' }}
+        {{ loading ? '...' : t('create') }}
       </button>
 
       <button class="cancel" @click="$emit('close')">
-        {{ createdGroup ? 'Done' : 'Cancel' }}
+        {{ t('cancel') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useChatStore } from '../stores/chat.js'
+import { useLanguageStore } from '../stores/language.js'
 
 const emit = defineEmits(['close'])
 const chatStore = useChatStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 const name = ref('')
 const loading = ref(false)

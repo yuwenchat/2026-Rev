@@ -1,7 +1,7 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <h3>Settings</h3>
+      <h3>{{ t('settings') }}</h3>
 
       <div class="user-info">
         <div class="avatar">{{ userStore.user?.username[0].toUpperCase() }}</div>
@@ -12,31 +12,50 @@
       </div>
 
       <div class="section">
+        <h4>{{ t('language') }}</h4>
+        <div class="language-select">
+          <button
+            :class="{ active: langStore.currentLang === 'en' }"
+            @click="langStore.setLanguage('en')"
+          >
+            {{ t('english') }}
+          </button>
+          <button
+            :class="{ active: langStore.currentLang === 'zh' }"
+            @click="langStore.setLanguage('zh')"
+          >
+            {{ t('chinese') }}
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
         <h4>Security</h4>
         <p class="info-text">
-          Your messages are end-to-end encrypted. Only you and your chat partners can read them.
-        </p>
-        <p class="info-text">
-          Your private key is encrypted with your password and stored securely.
+          {{ t('encrypted') }}
         </p>
       </div>
 
       <button class="logout" @click="handleLogout">
-        Logout
+        {{ t('logout') }}
       </button>
 
-      <button class="cancel" @click="$emit('close')">Close</button>
+      <button class="cancel" @click="$emit('close')">{{ t('cancel') }}</button>
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
+import { useLanguageStore } from '../stores/language.js'
 
 const emit = defineEmits(['close'])
 const router = useRouter()
 const userStore = useUserStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 function handleLogout() {
   userStore.logout()
@@ -120,6 +139,34 @@ h4 {
   color: var(--text-secondary);
   margin: 0.5rem 0;
   line-height: 1.4;
+}
+
+.language-select {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.language-select button {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.875rem;
+  margin-bottom: 0;
+}
+
+.language-select button:hover {
+  background: var(--border);
+}
+
+.language-select button.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 button {

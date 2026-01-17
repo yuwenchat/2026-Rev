@@ -1,16 +1,16 @@
 <template>
   <div class="auth-page">
     <div class="auth-card">
-      <h1>Create Account</h1>
-      <p class="subtitle">Join YuwenChat</p>
+      <h1>{{ t('register') }}</h1>
+      <p class="subtitle">{{ t('appName') }}</p>
 
       <form @submit.prevent="handleRegister">
         <div class="field">
-          <label>Username</label>
+          <label>{{ t('username') }}</label>
           <input
             v-model="username"
             type="text"
-            placeholder="Choose a username (2-20 chars)"
+            :placeholder="t('username')"
             required
             autocomplete="username"
             minlength="2"
@@ -19,11 +19,11 @@
         </div>
 
         <div class="field">
-          <label>Password</label>
+          <label>{{ t('password') }}</label>
           <input
             v-model="password"
             type="password"
-            placeholder="At least 6 characters"
+            :placeholder="t('password')"
             required
             autocomplete="new-password"
             minlength="6"
@@ -31,11 +31,11 @@
         </div>
 
         <div class="field">
-          <label>Confirm Password</label>
+          <label>{{ t('confirmPassword') }}</label>
           <input
             v-model="confirmPassword"
             type="password"
-            placeholder="Repeat your password"
+            :placeholder="t('confirmPassword')"
             required
             autocomplete="new-password"
           />
@@ -44,30 +44,43 @@
         <p v-if="error" class="error">{{ error }}</p>
 
         <button type="submit" :disabled="loading">
-          {{ loading ? 'Creating...' : 'Create Account' }}
+          {{ loading ? '...' : t('registerBtn') }}
         </button>
       </form>
 
       <div class="info">
-        <p>Your encryption keys will be generated automatically.</p>
-        <p>Private key is encrypted with your password - don't forget it!</p>
+        <p>{{ t('encrypted') }}</p>
       </div>
 
       <p class="switch">
-        Already have an account?
-        <router-link to="/login">Login</router-link>
+        {{ t('hasAccount') }}
+        <router-link to="/login">{{ t('loginHere') }}</router-link>
       </p>
+
+      <div class="lang-switch">
+        <button
+          :class="{ active: langStore.currentLang === 'en' }"
+          @click="langStore.setLanguage('en')"
+        >EN</button>
+        <button
+          :class="{ active: langStore.currentLang === 'zh' }"
+          @click="langStore.setLanguage('zh')"
+        >中文</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
+import { useLanguageStore } from '../stores/language.js'
 
 const router = useRouter()
 const userStore = useUserStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 const username = ref('')
 const password = ref('')
@@ -79,12 +92,12 @@ async function handleRegister() {
   error.value = ''
 
   if (password.value !== confirmPassword.value) {
-    error.value = 'Passwords do not match'
+    error.value = langStore.currentLang === 'zh' ? '密码不匹配' : 'Passwords do not match'
     return
   }
 
   if (password.value.length < 6) {
-    error.value = 'Password must be at least 6 characters'
+    error.value = langStore.currentLang === 'zh' ? '密码至少6位' : 'Password must be at least 6 characters'
     return
   }
 
@@ -209,5 +222,26 @@ button:disabled {
 .switch a {
   color: var(--primary);
   text-decoration: none;
+}
+
+.lang-switch {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.lang-switch button {
+  width: auto;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  background: var(--bg);
+  color: var(--text-secondary);
+  margin-top: 0;
+}
+
+.lang-switch button.active {
+  background: var(--primary);
+  color: white;
 }
 </style>

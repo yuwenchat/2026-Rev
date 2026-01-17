@@ -1,27 +1,27 @@
 <template>
   <div class="auth-page">
     <div class="auth-card">
-      <h1>YuwenChat</h1>
-      <p class="subtitle">Privacy-first encrypted chat</p>
+      <h1>{{ t('appName') }}</h1>
+      <p class="subtitle">{{ t('encrypted') }}</p>
 
       <form @submit.prevent="handleLogin">
         <div class="field">
-          <label>Username</label>
+          <label>{{ t('username') }}</label>
           <input
             v-model="username"
             type="text"
-            placeholder="Enter username"
+            :placeholder="t('username')"
             required
             autocomplete="username"
           />
         </div>
 
         <div class="field">
-          <label>Password</label>
+          <label>{{ t('password') }}</label>
           <input
             v-model="password"
             type="password"
-            placeholder="Enter password"
+            :placeholder="t('password')"
             required
             autocomplete="current-password"
           />
@@ -30,25 +30,39 @@
         <p v-if="error" class="error">{{ error }}</p>
 
         <button type="submit" :disabled="loading">
-          {{ loading ? 'Logging in...' : 'Login' }}
+          {{ loading ? '...' : t('loginBtn') }}
         </button>
       </form>
 
       <p class="switch">
-        Don't have an account?
-        <router-link to="/register">Register</router-link>
+        {{ t('noAccount') }}
+        <router-link to="/register">{{ t('registerHere') }}</router-link>
       </p>
+
+      <div class="lang-switch">
+        <button
+          :class="{ active: langStore.currentLang === 'en' }"
+          @click="langStore.setLanguage('en')"
+        >EN</button>
+        <button
+          :class="{ active: langStore.currentLang === 'zh' }"
+          @click="langStore.setLanguage('zh')"
+        >中文</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
+import { useLanguageStore } from '../stores/language.js'
 
 const router = useRouter()
 const userStore = useUserStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 const username = ref('')
 const password = ref('')
@@ -167,5 +181,26 @@ button:disabled {
 .switch a {
   color: var(--primary);
   text-decoration: none;
+}
+
+.lang-switch {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.lang-switch button {
+  width: auto;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  background: var(--bg);
+  color: var(--text-secondary);
+  margin-top: 0;
+}
+
+.lang-switch button.active {
+  background: var(--primary);
+  color: white;
 }
 </style>

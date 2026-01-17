@@ -310,6 +310,33 @@ export const useChatStore = defineStore('chat', () => {
         }
       })
     })
+
+    // Message edited
+    socket.on('chat:edited', ({ messageId, encryptedContent, nonce, editedAt }) => {
+      const msg = messages.value.find(m => m.id === messageId)
+      if (msg) {
+        // Decrypt the new content
+        if (currentChat.value?.type === 'private') {
+          const friend = friends.value.find(f => f.id === msg.senderId)
+          msg.content = decryptMessage(
+            encryptedContent,
+            nonce,
+            friend?.publicKey || currentChat.value.publicKey,
+            userStore.privateKey
+          )
+        } else if (currentChat.value?.type === 'group' && currentChat.value.groupKey) {
+          msg.content = decryptGroupMessage(encryptedContent, nonce, currentChat.value.groupKey)
+        }
+        msg.editedAt = editedAt
+      }
+    })
+
+    // Message deleted
+    socket.on('chat:deleted', ({ messageId, deletedForBoth }) => {
+      if (deletedForBoth) {
+        messages.value = messages.value.filter(m => m.id !== messageId)
+      }
+    })
   }
 
   // Send typing indicator
@@ -350,6 +377,66 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  // Edit message
+  function editMessage(messageId, newContent) {
+    const socket = getSocket()
+    if (!socket || !currentChat.value) return
+
+    const msg = messages.value.find(m => m.id === messageId)
+    if (!msg) return
+
+    if (currentChat.value.type === 'private') {
+      const { encryptedContent, nonce } = encryptMessage(
+        newContent,
+        userStore.privateKey,
+        currentChat.value.publicKey
+      )
+
+      socket.emit('chat:edit', {
+        messageId,
+        encryptedContent,
+        nonce,
+        receiverId: currentChat.value.id
+      })
+
+      // Update local state immediately
+      msg.content = newContent
+      msg.editedAt = new Date().toISOString()
+    } else if (currentChat.value.groupKey) {
+      const { encryptedContent, nonce } = encryptGroupMessage(
+        newContent,
+        currentChat.value.groupKey
+      )
+
+      socket.emit('chat:edit', {
+        messageId,
+        encryptedContent,
+        nonce,
+        groupId: currentChat.value.id
+      })
+
+      // Update local state immediately
+      msg.content = newContent
+      msg.editedAt = new Date().toISOString()
+    }
+  }
+
+  // Delete message
+  function deleteMessage(messageId, forBoth = false) {
+    const socket = getSocket()
+    if (!socket || !currentChat.value) return
+
+    socket.emit('chat:delete', {
+      messageId,
+      forBoth,
+      receiverId: currentChat.value.type === 'private' ? currentChat.value.id : null,
+      groupId: currentChat.value.type === 'group' ? currentChat.value.id : null
+    })
+
+    // Remove from local state immediately
+    messages.value = messages.value.filter(m => m.id !== messageId)
+  }
+
   return {
     friends,
     pendingReceived,
@@ -372,6 +459,8 @@ export const useChatStore = defineStore('chat', () => {
     sendFile,
     setupSocketListeners,
     sendTyping,
-    markMessagesAsRead
+    markMessagesAsRead,
+    editMessage,
+    deleteMessage
   }
 })

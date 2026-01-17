@@ -38,6 +38,15 @@ function runMigrations() {
     db.exec('ALTER TABLE messages ADD COLUMN file_type TEXT');
     db.exec('ALTER TABLE messages ADD COLUMN file_size INTEGER');
   }
+
+  // Check if edited_at column exists in messages
+  const hasEditedAt = msgColumns.some(col => col.name === 'edited_at');
+  if (!hasEditedAt) {
+    console.log('Migration: Adding edit/delete columns to messages table');
+    db.exec('ALTER TABLE messages ADD COLUMN edited_at DATETIME');
+    db.exec('ALTER TABLE messages ADD COLUMN deleted_for_sender INTEGER DEFAULT 0');
+    db.exec('ALTER TABLE messages ADD COLUMN deleted_for_receiver INTEGER DEFAULT 0');
+  }
 }
 
 runMigrations();

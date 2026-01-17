@@ -1,21 +1,21 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <h3>Add Friend</h3>
+      <h3>{{ t('addFriend') }}</h3>
 
       <div class="field">
-        <label>Friend Code</label>
+        <label>{{ t('friendCode') }}</label>
         <input
           v-model="code"
           type="text"
-          placeholder="Enter 6-digit code"
+          :placeholder="t('searchByCode')"
           maxlength="6"
           @input="code = code.toUpperCase()"
         />
       </div>
 
       <button @click="searchUser" :disabled="code.length !== 6 || loading">
-        {{ loading ? 'Searching...' : 'Search' }}
+        {{ loading ? '...' : t('search') }}
       </button>
 
       <p v-if="error" class="error">{{ error }}</p>
@@ -27,21 +27,24 @@
           <span>{{ foundUser.friendCode }}</span>
         </div>
         <button @click="sendRequest" :disabled="sending" class="add-btn">
-          {{ sending ? 'Sending...' : 'Add' }}
+          {{ sending ? '...' : t('sendRequest') }}
         </button>
       </div>
 
-      <button class="cancel" @click="$emit('close')">Cancel</button>
+      <button class="cancel" @click="$emit('close')">{{ t('cancel') }}</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useChatStore } from '../stores/chat.js'
+import { useLanguageStore } from '../stores/language.js'
 
 const emit = defineEmits(['close'])
 const chatStore = useChatStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 const code = ref('')
 const foundUser = ref(null)
@@ -59,7 +62,7 @@ async function searchUser() {
   try {
     foundUser.value = await chatStore.searchUser(code.value)
   } catch (err) {
-    error.value = err.message
+    error.value = t.value('userNotFound')
   } finally {
     loading.value = false
   }

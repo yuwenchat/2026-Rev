@@ -1,14 +1,14 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <h3>Join Group</h3>
+      <h3>{{ t('joinGroup') }}</h3>
 
       <div class="field">
-        <label>Group Code</label>
+        <label>{{ t('groupCode') }}</label>
         <input
           v-model="code"
           type="text"
-          placeholder="Enter 6-digit code"
+          :placeholder="t('groupCode')"
           maxlength="6"
           @input="code = code.toUpperCase()"
         />
@@ -17,7 +17,7 @@
       <p v-if="error" class="error">{{ error }}</p>
 
       <div v-if="joined" class="success">
-        <p>Joined group: {{ joined.name }}</p>
+        <p>{{ joined.name }}</p>
       </div>
 
       <button
@@ -25,22 +25,25 @@
         @click="joinGroup"
         :disabled="code.length !== 6 || loading"
       >
-        {{ loading ? 'Joining...' : 'Join Group' }}
+        {{ loading ? '...' : t('join') }}
       </button>
 
       <button class="cancel" @click="$emit('close')">
-        {{ joined ? 'Done' : 'Cancel' }}
+        {{ t('cancel') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useChatStore } from '../stores/chat.js'
+import { useLanguageStore } from '../stores/language.js'
 
 const emit = defineEmits(['close'])
 const chatStore = useChatStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 const code = ref('')
 const loading = ref(false)

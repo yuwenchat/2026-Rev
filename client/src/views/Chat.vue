@@ -3,19 +3,19 @@
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-header">
-        <h2>YuwenChat</h2>
+        <h2>{{ t('appName') }}</h2>
         <div class="header-actions">
-          <router-link v-if="userStore.user?.isAdmin" to="/admin" class="icon-btn" title="Admin Panel">
+          <router-link v-if="userStore.user?.isAdmin" to="/admin" class="icon-btn" :title="t('adminPanel')">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </router-link>
-          <button class="icon-btn" @click="showSettings = true" title="Settings">
+          <button class="icon-btn" @click="showSettings = true" :title="t('settings')">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg>
           </button>
         </div>
       </div>
 
       <div class="my-code">
-        <span>My Code:</span>
+        <span>{{ t('myCode') }}:</span>
         <strong>{{ userStore.user?.friendCode }}</strong>
         <button @click="copyCode" class="copy-btn" title="Copy">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -23,14 +23,14 @@
       </div>
 
       <div class="actions">
-        <button @click="showAddFriend = true">Add Friend</button>
-        <button @click="showCreateGroup = true">New Group</button>
-        <button @click="showJoinGroup = true">Join Group</button>
+        <button @click="showAddFriend = true">{{ t('addFriend') }}</button>
+        <button @click="showCreateGroup = true">{{ t('newGroup') }}</button>
+        <button @click="showJoinGroup = true">{{ t('joinGroup') }}</button>
       </div>
 
       <!-- Friend requests -->
       <div v-if="chatStore.pendingReceived.length" class="section">
-        <h3>Friend Requests</h3>
+        <h3>{{ t('friendRequests') }}</h3>
         <div
           v-for="req in chatStore.pendingReceived"
           :key="req.friendshipId"
@@ -38,15 +38,15 @@
         >
           <span>{{ req.username }}</span>
           <div class="request-actions">
-            <button @click="acceptRequest(req.friendshipId)" class="accept">Accept</button>
-            <button @click="rejectRequest(req.friendshipId)" class="reject">Reject</button>
+            <button @click="acceptRequest(req.friendshipId)" class="accept">{{ t('accept') }}</button>
+            <button @click="rejectRequest(req.friendshipId)" class="reject">{{ t('reject') }}</button>
           </div>
         </div>
       </div>
 
       <!-- Friends -->
       <div class="section">
-        <h3>Friends</h3>
+        <h3>{{ t('friends') }}</h3>
         <div
           v-for="friend in chatStore.friends"
           :key="friend.id"
@@ -58,16 +58,16 @@
           <div class="contact-info">
             <span class="name">{{ friend.username }}</span>
             <span class="status" :class="{ online: chatStore.onlineFriends.has(friend.id) }">
-              {{ chatStore.onlineFriends.has(friend.id) ? 'Online' : 'Offline' }}
+              {{ chatStore.onlineFriends.has(friend.id) ? t('online') : t('offline') }}
             </span>
           </div>
         </div>
-        <p v-if="!chatStore.friends.length" class="empty">No friends yet</p>
+        <p v-if="!chatStore.friends.length" class="empty">{{ t('noFriends') }}</p>
       </div>
 
       <!-- Groups -->
       <div class="section">
-        <h3>Groups</h3>
+        <h3>{{ t('groups') }}</h3>
         <div
           v-for="group in chatStore.groups"
           :key="group.id"
@@ -81,7 +81,7 @@
             <span class="code">{{ group.groupCode }}</span>
           </div>
         </div>
-        <p v-if="!chatStore.groups.length" class="empty">No groups yet</p>
+        <p v-if="!chatStore.groups.length" class="empty">{{ t('noGroups') }}</p>
       </div>
     </aside>
 
@@ -99,8 +99,8 @@
       <div v-if="!chatStore.currentChat" class="no-chat">
         <div class="no-chat-content">
           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <h3>Select a chat to start messaging</h3>
-          <p>Your messages are end-to-end encrypted</p>
+          <h3>{{ t('selectChat') }}</h3>
+          <p>{{ t('encrypted') }}</p>
         </div>
       </div>
 
@@ -110,10 +110,10 @@
           <div class="chat-info">
             <h3>{{ chatStore.currentChat.name }}</h3>
             <span v-if="chatStore.currentChat.type === 'group'" class="group-code">
-              Code: {{ chatStore.currentChat.groupCode }}
+              {{ t('groupCode') }}: {{ chatStore.currentChat.groupCode }}
             </span>
             <span v-else class="online-status" :class="{ online: chatStore.onlineFriends.has(chatStore.currentChat.id) }">
-              {{ chatStore.onlineFriends.has(chatStore.currentChat.id) ? 'Online' : 'Offline' }}
+              {{ chatStore.onlineFriends.has(chatStore.currentChat.id) ? t('online') : t('offline') }}
             </span>
           </div>
         </div>
@@ -124,6 +124,7 @@
             :key="msg.id"
             class="message"
             :class="{ own: msg.senderId === userStore.user?.id }"
+            @contextmenu="showContextMenu($event, msg)"
           >
             <span v-if="chatStore.currentChat.type === 'group' && msg.senderId !== userStore.user?.id" class="sender">
               {{ msg.senderName }}
@@ -159,8 +160,9 @@
             </div>
             <div class="message-meta">
               <span class="time">{{ formatTime(msg.createdAt) }}</span>
+              <span v-if="msg.editedAt" class="edited-indicator">({{ t('edited') }})</span>
               <span v-if="msg.senderId === userStore.user?.id && chatStore.currentChat?.type === 'private'" class="read-status" :class="msg.status">
-                {{ msg.status === 'read' ? 'Read' : msg.status === 'delivered' ? 'Delivered' : 'Sent' }}
+                {{ msg.status === 'read' ? t('read') : msg.status === 'delivered' ? t('delivered') : t('sent') }}
               </span>
             </div>
           </div>
@@ -180,7 +182,7 @@
           <input
             v-model="newMessage"
             type="text"
-            placeholder="Type a message..."
+            :placeholder="t('typeMessage')"
             @input="handleTyping"
           />
           <button type="submit" :disabled="!newMessage.trim() && !isUploading">
@@ -195,13 +197,65 @@
     <CreateGroupModal v-if="showCreateGroup" @close="showCreateGroup = false" />
     <JoinGroupModal v-if="showJoinGroup" @close="showJoinGroup = false" />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
+
+    <!-- Context Menu for messages -->
+    <div
+      v-if="contextMenu.show"
+      class="context-menu"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+    >
+      <button @click="startEdit(contextMenu.message)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        {{ t('edit') }}
+      </button>
+      <button @click="confirmDelete(contextMenu.message)" class="danger">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        {{ t('delete') }}
+      </button>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
+      <div class="modal delete-modal">
+        <h3>{{ t('deleteMessage') }}</h3>
+        <p>{{ t('confirmDelete') }}</p>
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="deleteForBoth" />
+          {{ t('alsoDeleteForOther') }}
+        </label>
+        <div class="modal-actions">
+          <button @click="cancelDelete" class="btn-secondary">{{ t('cancel') }}</button>
+          <button @click="executeDelete" class="btn-danger">{{ t('delete') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Message Modal -->
+    <div v-if="editingMessage" class="modal-overlay" @click.self="cancelEdit">
+      <div class="modal edit-modal">
+        <h3>{{ t('editMessage') }}</h3>
+        <input
+          v-model="editContent"
+          type="text"
+          class="edit-input"
+          @keyup.enter="saveEdit"
+          @keyup.esc="cancelEdit"
+          autofocus
+        />
+        <div class="modal-actions">
+          <button @click="cancelEdit" class="btn-secondary">{{ t('cancel') }}</button>
+          <button @click="saveEdit" class="btn-primary" :disabled="!editContent.trim()">{{ t('save') }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { useUserStore } from '../stores/user.js'
 import { useChatStore } from '../stores/chat.js'
+import { useLanguageStore } from '../stores/language.js'
 import AddFriendModal from '../components/AddFriendModal.vue'
 import CreateGroupModal from '../components/CreateGroupModal.vue'
 import JoinGroupModal from '../components/JoinGroupModal.vue'
@@ -209,6 +263,8 @@ import SettingsModal from '../components/SettingsModal.vue'
 
 const userStore = useUserStore()
 const chatStore = useChatStore()
+const langStore = useLanguageStore()
+const t = computed(() => langStore.t)
 
 const sidebarOpen = ref(false)
 const showAddFriend = ref(false)
@@ -221,12 +277,15 @@ const messagesContainer = ref(null)
 const fileInput = ref(null)
 const isUploading = ref(false)
 
-let typingTimeout = null
+// Edit/Delete state
+const editingMessage = ref(null)
+const editContent = ref('')
+const showDeleteModal = ref(false)
+const deleteMessageId = ref(null)
+const deleteForBoth = ref(false)
+const contextMenu = ref({ show: false, x: 0, y: 0, message: null })
 
-onMounted(async () => {
-  await chatStore.loadContacts()
-  chatStore.setupSocketListeners()
-})
+let typingTimeout = null
 
 watch(() => chatStore.messages.length, () => {
   nextTick(() => {
@@ -306,7 +365,7 @@ async function handleFileSelect(event) {
 
   // Check file size (10MB max)
   if (file.size > 10 * 1024 * 1024) {
-    alert('File too large. Maximum size is 10MB.')
+    alert(t.value('fileTooLarge'))
     return
   }
 
@@ -314,7 +373,7 @@ async function handleFileSelect(event) {
   try {
     await chatStore.sendFile(file)
   } catch (err) {
-    alert('Failed to send file: ' + err.message)
+    alert(t.value('uploadFailed') + ': ' + err.message)
   } finally {
     isUploading.value = false
     // Reset file input
@@ -323,6 +382,77 @@ async function handleFileSelect(event) {
     }
   }
 }
+
+// Context menu for messages
+function showContextMenu(event, msg) {
+  event.preventDefault()
+  // Only show for own messages
+  if (msg.senderId !== userStore.user?.id) return
+
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    message: msg
+  }
+}
+
+function hideContextMenu() {
+  contextMenu.value.show = false
+}
+
+// Edit message
+function startEdit(msg) {
+  hideContextMenu()
+  // Get the text content (not file info)
+  const parsed = parseMessage(msg.content)
+  editingMessage.value = msg
+  editContent.value = parsed.file ? parsed.text : msg.content
+}
+
+function cancelEdit() {
+  editingMessage.value = null
+  editContent.value = ''
+}
+
+function saveEdit() {
+  if (!editingMessage.value || !editContent.value.trim()) return
+  chatStore.editMessage(editingMessage.value.id, editContent.value)
+  cancelEdit()
+}
+
+// Delete message
+function confirmDelete(msg) {
+  hideContextMenu()
+  deleteMessageId.value = msg.id
+  deleteForBoth.value = false
+  showDeleteModal.value = true
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false
+  deleteMessageId.value = null
+  deleteForBoth.value = false
+}
+
+function executeDelete() {
+  if (!deleteMessageId.value) return
+  chatStore.deleteMessage(deleteMessageId.value, deleteForBoth.value)
+  cancelDelete()
+}
+
+// Close context menu when clicking outside
+function handleGlobalClick(event) {
+  if (contextMenu.value.show) {
+    hideContextMenu()
+  }
+}
+
+onMounted(async () => {
+  await chatStore.loadContacts()
+  chatStore.setupSocketListeners()
+  document.addEventListener('click', handleGlobalClick)
+})
 </script>
 
 <style scoped>
@@ -816,5 +946,163 @@ async function handleFileSelect(event) {
   .message {
     max-width: 85%;
   }
+}
+
+/* Edited indicator */
+.edited-indicator {
+  font-size: 0.625rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 140px;
+  overflow: hidden;
+}
+
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: var(--bg);
+}
+
+.context-menu button.danger {
+  color: var(--error);
+}
+
+.context-menu button.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.modal {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal h3 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+}
+
+.modal p {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+}
+
+.btn-primary {
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  padding: 0.5rem 1rem;
+  background: var(--error);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 </style>
