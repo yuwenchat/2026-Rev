@@ -254,11 +254,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Unlock Modal (for session restoration) -->
+    <div v-if="showUnlockModal" class="modal-overlay">
+      <div class="modal unlock-modal">
+        <h3>{{ t('unlockTitle') || '解锁 / Unlock' }}</h3>
+        <p>{{ t('unlockDescription') || '请输入密码解锁您的私钥 / Enter password to unlock your private key' }}</p>
+        <input
+          v-model="unlockPassword"
+          type="password"
+          class="edit-input"
+          :placeholder="t('password') || 'Password'"
+          @keyup.enter="handleUnlock"
+          autofocus
+        />
+        <p v-if="unlockError" class="error-text">{{ unlockError }}</p>
+        <div class="modal-actions">
+          <button @click="handleLogout" class="btn-secondary">{{ t('logout') || '登出 / Logout' }}</button>
+          <button @click="handleUnlock" class="btn-primary" :disabled="!unlockPassword || unlockLoading">
+            {{ unlockLoading ? (t('unlocking') || '解锁中...') : (t('unlock') || '解锁 / Unlock') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 import { useChatStore } from '../stores/chat.js'
 import { useLanguageStore } from '../stores/language.js'
@@ -266,6 +290,8 @@ import AddFriendModal from '../components/AddFriendModal.vue'
 import CreateGroupModal from '../components/CreateGroupModal.vue'
 import JoinGroupModal from '../components/JoinGroupModal.vue'
 import SettingsModal from '../components/SettingsModal.vue'
+
+const router = useRouter()
 
 const userStore = useUserStore()
 const chatStore = useChatStore()
@@ -290,6 +316,12 @@ const showDeleteModal = ref(false)
 const deleteMessageId = ref(null)
 const deleteForBoth = ref(false)
 const contextMenu = ref({ show: false, x: 0, y: 0, message: null })
+
+// Unlock modal state
+const showUnlockModal = ref(false)
+const unlockPassword = ref('')
+const unlockError = ref('')
+const unlockLoading = ref(false)
 
 let typingTimeout = null
 
@@ -454,7 +486,44 @@ function handleGlobalClick(event) {
   }
 }
 
+// Unlock session
+async function handleUnlock() {
+  if (!unlockPassword.value || unlockLoading.value) return
+
+  unlockLoading.value = true
+  unlockError.value = ''
+
+  try {
+    const success = await userStore.restoreSession(unlockPassword.value)
+    if (success) {
+      showUnlockModal.value = false
+      unlockPassword.value = ''
+      // Load contacts and setup socket after successful unlock
+      await chatStore.loadContacts()
+      chatStore.setupSocketListeners()
+    } else {
+      unlockError.value = langStore.t('invalidPassword') || '密码错误 / Invalid password'
+    }
+  } catch (err) {
+    unlockError.value = err.message || langStore.t('invalidPassword') || '密码错误 / Invalid password'
+  } finally {
+    unlockLoading.value = false
+  }
+}
+
+// Logout and go to login page
+function handleLogout() {
+  userStore.logout()
+  router.push('/login')
+}
+
 onMounted(async () => {
+  // Check if we need to restore session (has token but no private key)
+  if (userStore.token && !userStore.privateKey) {
+    showUnlockModal.value = true
+    return // Don't load contacts until unlocked
+  }
+
   await chatStore.loadContacts()
   chatStore.setupSocketListeners()
   document.addEventListener('click', handleGlobalClick)
@@ -1116,5 +1185,24 @@ onMounted(async () => {
 .edit-input:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+/* Unlock modal */
+.unlock-modal {
+  text-align: center;
+}
+
+.unlock-modal h3 {
+  color: var(--primary);
+}
+
+.unlock-modal p {
+  font-size: 0.875rem;
+}
+
+.error-text {
+  color: var(--error);
+  font-size: 0.875rem;
+  margin: -0.5rem 0 1rem;
 }
 </style>

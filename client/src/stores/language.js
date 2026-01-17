@@ -105,6 +105,13 @@ const translations = {
     fileTooLarge: 'File too large. Maximum size is 10MB.',
     uploadFailed: 'Failed to send file',
 
+    // Unlock
+    unlockTitle: 'Unlock Session',
+    unlockDescription: 'Enter your password to decrypt your private key',
+    unlock: 'Unlock',
+    unlocking: 'Unlocking...',
+    invalidPassword: 'Invalid password',
+
     // Updates
     updates: 'Updates',
     currentVersion: 'Current Version',
@@ -239,6 +246,13 @@ const translations = {
     // File
     fileTooLarge: '文件太大，最大支持10MB。',
     uploadFailed: '发送文件失败',
+
+    // Unlock
+    unlockTitle: '解锁会话',
+    unlockDescription: '输入密码解锁您的私钥',
+    unlock: '解锁',
+    unlocking: '解锁中...',
+    invalidPassword: '密码错误',
 
     // Updates
     updates: '系统更新',
