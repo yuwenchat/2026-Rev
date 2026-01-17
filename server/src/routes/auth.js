@@ -36,11 +36,15 @@ router.post('/register', async (req, res) => {
     // Generate unique friend code
     const friendCode = generateUniqueCode(db, 'users', 'friend_code');
 
+    // Check if this is the first user (make them admin)
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+    const isAdmin = userCount === 0 ? 1 : 0;
+
     // Insert user
     const result = db.prepare(`
-      INSERT INTO users (username, password_hash, friend_code, public_key, encrypted_private_key)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(username, passwordHash, friendCode, publicKey, encryptedPrivateKey);
+      INSERT INTO users (username, password_hash, friend_code, public_key, encrypted_private_key, is_admin)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(username, passwordHash, friendCode, publicKey, encryptedPrivateKey, isAdmin);
 
     const userId = result.lastInsertRowid;
     const token = generateToken(userId);
@@ -50,7 +54,8 @@ router.post('/register', async (req, res) => {
         id: userId,
         username,
         friendCode,
-        publicKey
+        publicKey,
+        isAdmin: !!isAdmin
       },
       token
     });
@@ -71,7 +76,7 @@ router.post('/login', async (req, res) => {
 
     // Find user
     const user = db.prepare(`
-      SELECT id, username, password_hash, friend_code, public_key, encrypted_private_key
+      SELECT id, username, password_hash, friend_code, public_key, encrypted_private_key, is_admin
       FROM users WHERE username = ?
     `).get(username);
 
@@ -93,7 +98,8 @@ router.post('/login', async (req, res) => {
         username: user.username,
         friendCode: user.friend_code,
         publicKey: user.public_key,
-        encryptedPrivateKey: user.encrypted_private_key
+        encryptedPrivateKey: user.encrypted_private_key,
+        isAdmin: !!user.is_admin
       },
       token
     });
@@ -107,7 +113,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', authMiddleware, (req, res) => {
   try {
     const user = db.prepare(`
-      SELECT id, username, friend_code, public_key, encrypted_private_key, created_at
+      SELECT id, username, friend_code, public_key, encrypted_private_key, is_admin, created_at
       FROM users WHERE id = ?
     `).get(req.userId);
 
@@ -121,6 +127,7 @@ router.get('/me', authMiddleware, (req, res) => {
       friendCode: user.friend_code,
       publicKey: user.public_key,
       encryptedPrivateKey: user.encrypted_private_key,
+      isAdmin: !!user.is_admin,
       createdAt: user.created_at
     });
   } catch (err) {

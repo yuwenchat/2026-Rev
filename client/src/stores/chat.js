@@ -166,13 +166,19 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   // Send message
-  function sendMessage(content) {
+  function sendMessage(content, fileInfo = null) {
     const socket = getSocket()
-    if (!socket || !currentChat.value || !content.trim()) return
+    if (!socket || !currentChat.value) return
+    if (!content.trim() && !fileInfo) return
+
+    // If there's a file, include file info in content
+    const messageContent = fileInfo
+      ? JSON.stringify({ text: content, file: fileInfo })
+      : content
 
     if (currentChat.value.type === 'private') {
       const { encryptedContent, nonce } = encryptMessage(
-        content,
+        messageContent,
         userStore.privateKey,
         currentChat.value.publicKey
       )
@@ -180,21 +186,46 @@ export const useChatStore = defineStore('chat', () => {
       socket.emit('chat:private', {
         receiverId: currentChat.value.id,
         encryptedContent,
-        nonce
+        nonce,
+        hasFile: !!fileInfo
       })
     } else {
       if (!currentChat.value.groupKey) return
 
       const { encryptedContent, nonce } = encryptGroupMessage(
-        content,
+        messageContent,
         currentChat.value.groupKey
       )
 
       socket.emit('chat:group', {
         groupId: currentChat.value.id,
         encryptedContent,
-        nonce
+        nonce,
+        hasFile: !!fileInfo
       })
+    }
+  }
+
+  // Send file
+  async function sendFile(file) {
+    if (!currentChat.value) return
+
+    try {
+      // Upload file first
+      const uploadResult = await api.uploadFile(file)
+
+      // Send message with file info
+      sendMessage('', {
+        url: uploadResult.url,
+        name: uploadResult.originalName,
+        size: uploadResult.size,
+        type: uploadResult.mimeType
+      })
+
+      return uploadResult
+    } catch (err) {
+      console.error('Send file error:', err)
+      throw err
     }
   }
 
@@ -216,6 +247,8 @@ export const useChatStore = defineStore('chat', () => {
             userStore.privateKey
           )
         })
+        // Mark as read immediately since we're viewing this chat
+        setTimeout(() => markMessagesAsRead(), 100)
       }
     })
 
@@ -291,6 +324,32 @@ export const useChatStore = defineStore('chat', () => {
     })
   }
 
+  // Mark messages as read
+  function markMessagesAsRead() {
+    if (!currentChat.value || currentChat.value.type !== 'private') return
+
+    const socket = getSocket()
+    if (!socket) return
+
+    // Find unread messages from the other person
+    const unreadMessages = messages.value.filter(
+      m => m.senderId === currentChat.value.id && m.status !== 'read'
+    )
+
+    if (unreadMessages.length > 0) {
+      const messageIds = unreadMessages.map(m => m.id)
+      socket.emit('chat:read', {
+        messageIds,
+        senderId: currentChat.value.id
+      })
+
+      // Update local state
+      unreadMessages.forEach(m => {
+        m.status = 'read'
+      })
+    }
+  }
+
   return {
     friends,
     pendingReceived,
@@ -310,7 +369,9 @@ export const useChatStore = defineStore('chat', () => {
     leaveGroup,
     selectChat,
     sendMessage,
+    sendFile,
     setupSocketListeners,
-    sendTyping
+    sendTyping,
+    markMessagesAsRead
   }
 })

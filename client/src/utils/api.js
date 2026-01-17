@@ -88,5 +88,57 @@ export const api = {
   markRead: (messageIds) => request('/messages/read', {
     method: 'POST',
     body: JSON.stringify({ messageIds })
-  })
+  }),
+
+  // Admin
+  adminGetStats: () => request('/admin/stats'),
+
+  adminGetUsers: () => request('/admin/users'),
+
+  adminGetUser: (id) => request(`/admin/users/${id}`),
+
+  adminUpdateUser: (id, data) => request(`/admin/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+
+  adminDeleteUser: (id) => request(`/admin/users/${id}`, {
+    method: 'DELETE'
+  }),
+
+  adminGetGroups: () => request('/admin/groups'),
+
+  adminDeleteGroup: (id) => request(`/admin/groups/${id}`, {
+    method: 'DELETE'
+  }),
+
+  adminGetMessages: (params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return request(`/admin/messages?${query}`)
+  },
+
+  adminDeleteMessage: (id) => request(`/admin/messages/${id}`, {
+    method: 'DELETE'
+  }),
+
+  // Upload
+  uploadFile: async (file) => {
+    const token = localStorage.getItem('token')
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    })
+
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data.error || 'Upload failed')
+    }
+    return data
+  }
 }

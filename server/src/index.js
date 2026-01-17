@@ -3,13 +3,20 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 import authRoutes from './routes/auth.js';
 import friendsRoutes from './routes/friends.js';
 import groupsRoutes from './routes/groups.js';
 import messagesRoutes from './routes/messages.js';
+import adminRoutes from './routes/admin.js';
+import uploadRoutes from './routes/upload.js';
 import { socketAuthMiddleware } from './middleware/auth.js';
 import { setupSocketHandlers } from './socket/handler.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const server = createServer(app);
@@ -31,11 +38,17 @@ const io = new Server(server, {
 io.use(socketAuthMiddleware);
 setupSocketHandlers(io);
 
+// Serve uploaded files
+const UPLOAD_DIR = process.env.UPLOAD_DIR || join(__dirname, '../uploads');
+app.use('/uploads', express.static(UPLOAD_DIR));
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

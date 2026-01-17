@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   friend_code TEXT UNIQUE NOT NULL,
   public_key TEXT NOT NULL,
   encrypted_private_key TEXT NOT NULL,
+  is_admin INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -30,6 +31,10 @@ CREATE TABLE IF NOT EXISTS messages (
   encrypted_content TEXT NOT NULL,
   nonce TEXT NOT NULL,
   status TEXT DEFAULT 'sent' CHECK(status IN ('sent', 'delivered', 'read')),
+  file_path TEXT,
+  file_name TEXT,
+  file_type TEXT,
+  file_size INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,

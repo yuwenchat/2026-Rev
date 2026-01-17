@@ -23,6 +23,12 @@ const routes = [
     name: 'Chat',
     component: () => import('./views/Chat.vue'),
     meta: { auth: true }
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('./views/Admin.vue'),
+    meta: { auth: true, admin: true }
   }
 ]
 
@@ -38,6 +44,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.auth && !isLoggedIn) {
     next('/login')
   } else if (to.meta.guest && isLoggedIn) {
+    next('/chat')
+  } else if (to.meta.admin && (!userStore.user || !userStore.user.isAdmin)) {
     next('/chat')
   } else {
     next()

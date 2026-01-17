@@ -4,9 +4,14 @@
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-header">
         <h2>YuwenChat</h2>
-        <button class="icon-btn" @click="showSettings = true" title="Settings">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg>
-        </button>
+        <div class="header-actions">
+          <router-link v-if="userStore.user?.isAdmin" to="/admin" class="icon-btn" title="Admin Panel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </router-link>
+          <button class="icon-btn" @click="showSettings = true" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="my-code">
@@ -124,20 +129,61 @@
               {{ msg.senderName }}
             </span>
             <div class="bubble">
-              {{ msg.content }}
+              <template v-if="parseMessage(msg.content).file">
+                <div class="file-message">
+                  <img
+                    v-if="isImage(parseMessage(msg.content).file.type)"
+                    :src="parseMessage(msg.content).file.url"
+                    :alt="parseMessage(msg.content).file.name"
+                    class="message-image"
+                    @click="openImage(parseMessage(msg.content).file.url)"
+                  />
+                  <a
+                    v-else
+                    :href="parseMessage(msg.content).file.url"
+                    target="_blank"
+                    class="file-download"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="18"/><line x1="15" y1="15" x2="12" y2="18"/></svg>
+                    <span>{{ parseMessage(msg.content).file.name }}</span>
+                    <small>{{ formatFileSize(parseMessage(msg.content).file.size) }}</small>
+                  </a>
+                </div>
+                <div v-if="parseMessage(msg.content).text" class="file-text">
+                  {{ parseMessage(msg.content).text }}
+                </div>
+              </template>
+              <template v-else>
+                {{ msg.content }}
+              </template>
             </div>
-            <span class="time">{{ formatTime(msg.createdAt) }}</span>
+            <div class="message-meta">
+              <span class="time">{{ formatTime(msg.createdAt) }}</span>
+              <span v-if="msg.senderId === userStore.user?.id && chatStore.currentChat?.type === 'private'" class="read-status" :class="msg.status">
+                {{ msg.status === 'read' ? 'Read' : msg.status === 'delivered' ? 'Delivered' : 'Sent' }}
+              </span>
+            </div>
           </div>
         </div>
 
         <form class="message-input" @submit.prevent="sendMessage">
+          <input
+            type="file"
+            ref="fileInput"
+            @change="handleFileSelect"
+            style="display: none"
+            accept="image/*,.pdf,.txt,.zip"
+          />
+          <button type="button" class="attach-btn" @click="$refs.fileInput.click()" :disabled="isUploading">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
           <input
             v-model="newMessage"
             type="text"
             placeholder="Type a message..."
             @input="handleTyping"
           />
-          <button type="submit" :disabled="!newMessage.trim()">
+          <button type="submit" :disabled="!newMessage.trim() && !isUploading">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </form>
@@ -172,6 +218,8 @@ const showSettings = ref(false)
 
 const newMessage = ref('')
 const messagesContainer = ref(null)
+const fileInput = ref(null)
+const isUploading = ref(false)
 
 let typingTimeout = null
 
@@ -192,9 +240,11 @@ function copyCode() {
   navigator.clipboard.writeText(userStore.user?.friendCode || '')
 }
 
-function selectChat(type, contact) {
-  chatStore.selectChat(type, contact)
+async function selectChat(type, contact) {
+  await chatStore.selectChat(type, contact)
   sidebarOpen.value = false
+  // Mark messages as read after loading
+  setTimeout(() => chatStore.markMessagesAsRead(), 100)
 }
 
 async function acceptRequest(requestId) {
@@ -222,6 +272,56 @@ function handleTyping() {
 function formatTime(dateStr) {
   const date = new Date(dateStr)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function parseMessage(content) {
+  try {
+    const parsed = JSON.parse(content)
+    if (parsed && typeof parsed === 'object' && parsed.file) {
+      return parsed
+    }
+  } catch {
+    // Not JSON, regular text message
+  }
+  return { text: content, file: null }
+}
+
+function isImage(mimeType) {
+  return mimeType && mimeType.startsWith('image/')
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+function openImage(url) {
+  window.open(url, '_blank')
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // Check file size (10MB max)
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File too large. Maximum size is 10MB.')
+    return
+  }
+
+  isUploading.value = true
+  try {
+    await chatStore.sendFile(file)
+  } catch (err) {
+    alert('Failed to send file: ' + err.message)
+  } finally {
+    isUploading.value = false
+    // Reset file input
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
+  }
 }
 </script>
 
@@ -255,6 +355,11 @@ function formatTime(dateStr) {
   font-size: 1.25rem;
 }
 
+.header-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
 .icon-btn {
   background: none;
   border: none;
@@ -262,6 +367,10 @@ function formatTime(dateStr) {
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .icon-btn:hover {
@@ -547,10 +656,72 @@ function formatTime(dateStr) {
   border-bottom-right-radius: 4px;
 }
 
+.message-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
 .time {
   font-size: 0.625rem;
   color: var(--text-secondary);
-  margin-top: 0.25rem;
+}
+
+.read-status {
+  font-size: 0.625rem;
+  color: var(--text-secondary);
+}
+
+.read-status.read {
+  color: var(--success);
+}
+
+.read-status.delivered {
+  color: var(--primary);
+}
+
+/* File messages */
+.file-message {
+  margin-bottom: 0.5rem;
+}
+
+.message-image {
+  max-width: 250px;
+  max-height: 250px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.file-download {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.message.own .file-download {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.file-download span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-download small {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.file-text {
+  margin-top: 0.5rem;
 }
 
 /* Message input */
@@ -591,6 +762,30 @@ function formatTime(dateStr) {
 }
 
 .message-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attach-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.attach-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.attach-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
