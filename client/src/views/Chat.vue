@@ -122,6 +122,12 @@
               {{ chatStore.onlineFriends.has(chatStore.currentChat.id) ? t('online') : t('offline') }}
             </span>
           </div>
+          <button class="security-btn" @click="showSecurityModal = true" :title="t('securityVerification') || '安全验证'">
+            <span class="lock-icon">🔒</span>
+            <span class="security-emojis-preview" v-if="chatStore.currentChat.type === 'private'">
+              {{ currentChatSecurityEmojis }}
+            </span>
+          </button>
         </div>
 
         <div class="messages" ref="messagesContainer">
@@ -203,6 +209,12 @@
     <CreateGroupModal v-if="showCreateGroup" @close="showCreateGroup = false" />
     <JoinGroupModal v-if="showJoinGroup" @close="showJoinGroup = false" />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    <SecurityModal
+      v-if="showSecurityModal"
+      :type="chatStore.currentChat?.type || 'private'"
+      :partnerPublicKey="chatStore.currentChat?.publicKey || ''"
+      @close="showSecurityModal = false"
+    />
 
     <!-- Context Menu for messages -->
     <div
@@ -290,6 +302,8 @@ import AddFriendModal from '../components/AddFriendModal.vue'
 import CreateGroupModal from '../components/CreateGroupModal.vue'
 import JoinGroupModal from '../components/JoinGroupModal.vue'
 import SettingsModal from '../components/SettingsModal.vue'
+import SecurityModal from '../components/SecurityModal.vue'
+import { generateSecurityEmojis } from '../utils/crypto.js'
 
 const router = useRouter()
 
@@ -303,6 +317,15 @@ const showAddFriend = ref(false)
 const showCreateGroup = ref(false)
 const showJoinGroup = ref(false)
 const showSettings = ref(false)
+const showSecurityModal = ref(false)
+
+// Security emojis for current private chat
+const currentChatSecurityEmojis = computed(() => {
+  if (chatStore.currentChat?.type === 'private' && chatStore.currentChat?.publicKey && userStore.user?.publicKey) {
+    return generateSecurityEmojis(userStore.user.publicKey, chatStore.currentChat.publicKey)
+  }
+  return ''
+})
 
 const newMessage = ref('')
 const messagesContainer = ref(null)
@@ -808,11 +831,41 @@ onMounted(async () => {
   padding: 1rem;
   background: var(--card-bg);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .chat-info h3 {
   margin: 0;
   font-size: 1rem;
+}
+
+.security-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.security-btn:hover {
+  background: var(--border);
+  border-color: var(--success);
+}
+
+.lock-icon {
+  font-size: 1rem;
+}
+
+.security-emojis-preview {
+  font-size: 0.875rem;
+  letter-spacing: 0.1rem;
 }
 
 .group-code,

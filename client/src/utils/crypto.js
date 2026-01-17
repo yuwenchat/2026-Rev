@@ -177,3 +177,51 @@ export function decryptGroupMessage(encryptedContent, nonce, groupKey) {
     return '[Failed to decrypt]'
   }
 }
+
+// Security emoji set - 64 distinct, easy to compare emojis
+const SECURITY_EMOJIS = [
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼',
+  '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
+  '🦄', '🐝', '🦋', '🐢', '🐙', '🦀', '🐬', '🐳',
+  '🌸', '🌺', '🌻', '🌹', '🌴', '🌵', '🍀', '🍁',
+  '🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑',
+  '🌙', '⭐', '🌈', '☀️', '❄️', '🔥', '💧', '🌊',
+  '🎈', '🎀', '🎁', '🎨', '🎭', '🎪', '🎯', '🎲',
+  '🚀', '✈️', '🚂', '⛵', '🏠', '🏰', '⛰️', '🗽'
+]
+
+// Generate security verification emojis from two public keys
+// Both users will see the same emojis if their keys are authentic
+export function generateSecurityEmojis(publicKey1, publicKey2) {
+  // Sort keys to ensure same order on both devices
+  const sortedKeys = [publicKey1, publicKey2].sort()
+  const combined = sortedKeys[0] + sortedKeys[1]
+
+  // Hash the combined keys using nacl's hash function
+  const combinedBytes = decodeUTF8(combined)
+  const hash = nacl.hash(combinedBytes)
+
+  // Take first 8 bytes of hash and map to emojis
+  const emojis = []
+  for (let i = 0; i < 8; i++) {
+    const index = hash[i] % SECURITY_EMOJIS.length
+    emojis.push(SECURITY_EMOJIS[index])
+  }
+
+  return emojis.join('')
+}
+
+// Generate a fingerprint from a single public key (for display)
+export function generateKeyFingerprint(publicKey) {
+  const keyBytes = decodeBase64(publicKey)
+  const hash = nacl.hash(keyBytes)
+
+  // Convert first 16 bytes to hex groups
+  const groups = []
+  for (let i = 0; i < 16; i += 2) {
+    const hex = ((hash[i] << 8) | hash[i + 1]).toString(16).toUpperCase().padStart(4, '0')
+    groups.push(hex)
+  }
+
+  return groups.join(' ')
+}
