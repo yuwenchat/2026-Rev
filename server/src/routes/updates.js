@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { execSync, exec } from 'child_process';
+import { execSync, exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync, writeFileSync, readFileSync } from 'fs';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -11,9 +12,20 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, '../../../');
+const clientRoot = join(projectRoot, 'client');
+const serverRoot = join(projectRoot, 'server');
 
 const GITHUB_REPO = 'yuwenchat/2026-Rev';
 const GITHUB_API = 'https://api.github.com';
+
+// Update status tracking
+let updateStatus = {
+  inProgress: false,
+  stage: null,
+  message: '',
+  error: null,
+  startTime: null
+};
 
 // All routes require admin
 router.use(authMiddleware, adminMiddleware);
@@ -181,11 +193,61 @@ router.get('/check/:branch', async (req, res) => {
   }
 });
 
-// Apply updates from a specific branch
+// Get current update progress
+router.get('/progress', (req, res) => {
+  res.json(updateStatus);
+});
+
+// Helper function to check if pm2 is available
+function isPm2Available() {
+  try {
+    execSync('which pm2', { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Helper function to get pm2 process name
+function getPm2ProcessName() {
+  try {
+    const pm2List = execSync('pm2 jlist', { stdio: 'pipe' }).toString();
+    const processes = JSON.parse(pm2List);
+    // Find our server process
+    const serverProcess = processes.find(p =>
+      p.pm2_env?.pm_cwd?.includes('2026-Rev') ||
+      p.name?.includes('yuwen') ||
+      p.pm2_env?.script?.includes('server')
+    );
+    return serverProcess?.name || null;
+  } catch {
+    return null;
+  }
+}
+
+// Apply updates from a specific branch with auto-build and restart
 router.post('/apply/:branch', async (req, res) => {
   try {
     const { branch } = req.params;
-    const { stashLocal } = req.body; // Whether to stash local changes
+    const { stashLocal, autoBuild = true, autoRestart = true } = req.body;
+
+    // Check if update is already in progress
+    if (updateStatus.inProgress) {
+      return res.status(409).json({
+        error: 'Update already in progress',
+        stage: updateStatus.stage,
+        message: updateStatus.message
+      });
+    }
+
+    // Start update process
+    updateStatus = {
+      inProgress: true,
+      stage: 'checking',
+      message: 'Checking local changes...',
+      error: null,
+      startTime: Date.now()
+    };
 
     // Check for local changes
     const statusOutput = execSync('git status --porcelain', { cwd: projectRoot }).toString().trim();
@@ -193,9 +255,11 @@ router.post('/apply/:branch', async (req, res) => {
 
     if (hasLocalChanges) {
       if (stashLocal) {
-        // Stash local changes
+        updateStatus.stage = 'stashing';
+        updateStatus.message = 'Stashing local changes...';
         execSync('git stash push -m "Auto-stash before update"', { cwd: projectRoot });
       } else {
+        updateStatus = { ...updateStatus, inProgress: false, error: 'Local changes detected' };
         return res.status(400).json({
           error: 'Local changes detected',
           hasLocalChanges: true,
@@ -205,65 +269,143 @@ router.post('/apply/:branch', async (req, res) => {
     }
 
     // Fetch latest
+    updateStatus.stage = 'fetching';
+    updateStatus.message = 'Fetching latest code from GitHub...';
     execSync(`git fetch origin ${branch}`, { cwd: projectRoot, stdio: 'pipe' });
 
     // Get current commit before update
     const beforeCommit = execSync('git rev-parse HEAD', { cwd: projectRoot }).toString().trim();
 
-    // Reset to the remote branch (hard reset, but we've stashed changes if needed)
-    // Using merge instead of reset to be safer
+    // Merge updates
+    updateStatus.stage = 'merging';
+    updateStatus.message = 'Merging updates...';
     try {
       execSync(`git merge origin/${branch} --no-edit`, { cwd: projectRoot, stdio: 'pipe' });
     } catch (mergeError) {
-      // If merge fails, abort it
       try {
         execSync('git merge --abort', { cwd: projectRoot });
-      } catch {
-        // Ignore abort errors
-      }
+      } catch { /* ignore */ }
 
-      // Restore stashed changes if we stashed them
       if (hasLocalChanges && stashLocal) {
-        try {
-          execSync('git stash pop', { cwd: projectRoot });
-        } catch {
-          // Stash pop might fail if there are conflicts
-        }
+        try { execSync('git stash pop', { cwd: projectRoot }); } catch { /* ignore */ }
       }
 
+      updateStatus = { ...updateStatus, inProgress: false, error: 'Merge conflict' };
       return res.status(500).json({
         error: 'Merge conflict',
         message: 'Could not merge updates automatically. Manual intervention required.'
       });
     }
 
-    // Get new commit after update
     const afterCommit = execSync('git rev-parse HEAD', { cwd: projectRoot }).toString().trim();
+    const updated = beforeCommit !== afterCommit;
 
-    // Restore stashed changes if we stashed them
+    // Check which files changed to determine what needs rebuilding
+    let clientChanged = false;
+    let serverChanged = false;
+    if (updated) {
+      try {
+        const changedFiles = execSync(`git diff --name-only ${beforeCommit}..${afterCommit}`, { cwd: projectRoot }).toString();
+        clientChanged = changedFiles.includes('client/');
+        serverChanged = changedFiles.includes('server/');
+      } catch { /* ignore */ }
+    }
+
+    // Restore stashed changes
     let stashRestored = false;
     if (hasLocalChanges && stashLocal) {
       try {
         execSync('git stash pop', { cwd: projectRoot });
         stashRestored = true;
-      } catch {
-        // Stash pop failed, changes are still in stash
-        stashRestored = false;
+      } catch { stashRestored = false; }
+    }
+
+    // Auto-build client if changed and autoBuild is enabled
+    let buildSuccess = true;
+    let buildOutput = '';
+    if (autoBuild && clientChanged) {
+      updateStatus.stage = 'installing';
+      updateStatus.message = 'Installing client dependencies...';
+      try {
+        execSync('npm install', { cwd: clientRoot, stdio: 'pipe', timeout: 120000 });
+
+        updateStatus.stage = 'building';
+        updateStatus.message = 'Building client...';
+        const result = execSync('npm run build', { cwd: clientRoot, stdio: 'pipe', timeout: 180000 });
+        buildOutput = result.toString();
+      } catch (buildErr) {
+        buildSuccess = false;
+        buildOutput = buildErr.message;
       }
     }
 
-    res.json({
+    // Install server dependencies if server changed
+    if (autoBuild && serverChanged) {
+      updateStatus.stage = 'server-deps';
+      updateStatus.message = 'Installing server dependencies...';
+      try {
+        execSync('npm install', { cwd: serverRoot, stdio: 'pipe', timeout: 120000 });
+      } catch { /* ignore */ }
+    }
+
+    // Send response before restart
+    const response = {
       success: true,
       beforeCommit: beforeCommit.substring(0, 7),
       afterCommit: afterCommit.substring(0, 7),
-      updated: beforeCommit !== afterCommit,
+      updated,
       stashRestored,
-      message: beforeCommit !== afterCommit
-        ? 'Update applied successfully. Please restart the server to apply changes.'
+      clientChanged,
+      serverChanged,
+      buildSuccess,
+      buildOutput: buildSuccess ? '' : buildOutput,
+      willRestart: autoRestart && updated,
+      message: updated
+        ? (autoRestart ? 'Update applied. Server restarting...' : 'Update applied successfully.')
         : 'Already up to date.'
-    });
+    };
+
+    res.json(response);
+
+    // Auto-restart if enabled and changes were made
+    if (autoRestart && updated) {
+      updateStatus.stage = 'restarting';
+      updateStatus.message = 'Restarting server...';
+
+      // Give time for response to be sent
+      setTimeout(() => {
+        const pm2Name = getPm2ProcessName();
+        if (pm2Name) {
+          // Restart via pm2
+          try {
+            exec(`pm2 restart ${pm2Name}`, (err) => {
+              if (err) console.error('PM2 restart error:', err);
+            });
+          } catch (e) {
+            console.error('PM2 restart failed:', e);
+          }
+        } else if (isPm2Available()) {
+          // Try to restart the server process
+          try {
+            exec('pm2 restart all', (err) => {
+              if (err) console.error('PM2 restart all error:', err);
+            });
+          } catch (e) {
+            console.error('PM2 restart all failed:', e);
+          }
+        } else {
+          // No pm2, use process exit to trigger restart (if running under supervisor)
+          console.log('No PM2 found, exiting process for supervisor restart...');
+          process.exit(0);
+        }
+      }, 500);
+    } else {
+      updateStatus = { inProgress: false, stage: null, message: '', error: null, startTime: null };
+    }
+
   } catch (err) {
     console.error('Apply updates error:', err);
+    updateStatus = { inProgress: false, stage: null, message: '', error: err.message, startTime: null };
     res.status(500).json({ error: 'Failed to apply updates: ' + err.message });
   }
 });

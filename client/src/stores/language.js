@@ -118,12 +118,24 @@ const translations = {
     filesChanged: 'Files changed',
     newCommits: 'New commits',
     updating: 'Updating...',
-    updateSuccess: 'Update successful! Please restart the server.',
+    updateSuccess: 'Update successful!',
     updateFailed: 'Update failed',
     localChanges: 'Local changes detected',
     stashChanges: 'Stash local changes',
     databaseWarning: 'Warning: Database files may be affected',
-    restartRequired: 'Restart Required'
+    restartRequired: 'Restart Required',
+    autoBuild: 'Auto Build',
+    autoRestart: 'Auto Restart',
+    stageFetching: 'Fetching code...',
+    stageMerging: 'Merging updates...',
+    stageInstalling: 'Installing dependencies...',
+    stageBuilding: 'Building client...',
+    stageRestarting: 'Restarting server...',
+    buildFailed: 'Build failed',
+    serverRestarting: 'Server is restarting, please wait...',
+    clientChanged: 'Client files changed',
+    serverChanged: 'Server files changed',
+    reconnecting: 'Reconnecting...'
   },
   zh: {
     // App
@@ -241,12 +253,24 @@ const translations = {
     filesChanged: '文件变更',
     newCommits: '新提交',
     updating: '更新中...',
-    updateSuccess: '更新成功！请重启服务器。',
+    updateSuccess: '更新成功！',
     updateFailed: '更新失败',
     localChanges: '检测到本地修改',
     stashChanges: '暂存本地修改',
     databaseWarning: '警告：数据库文件可能受影响',
-    restartRequired: '需要重启'
+    restartRequired: '需要重启',
+    autoBuild: '自动构建',
+    autoRestart: '自动重启',
+    stageFetching: '正在获取代码...',
+    stageMerging: '正在合并更新...',
+    stageInstalling: '正在安装依赖...',
+    stageBuilding: '正在构建前端...',
+    stageRestarting: '正在重启服务器...',
+    buildFailed: '构建失败',
+    serverRestarting: '服务器正在重启，请稍候...',
+    clientChanged: '前端文件已更新',
+    serverChanged: '后端文件已更新',
+    reconnecting: '正在重新连接...'
   }
 }
 

@@ -237,11 +237,25 @@
               </div>
             </div>
 
-            <div v-if="updateStatus?.hasLocalChanges" class="stash-option">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="stashLocal" />
-                {{ t('stashChanges') }}
-              </label>
+            <div class="update-options">
+              <div v-if="updateStatus?.hasLocalChanges" class="option-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="stashLocal" />
+                  {{ t('stashChanges') }}
+                </label>
+              </div>
+              <div class="option-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="autoBuild" />
+                  {{ t('autoBuild') }}
+                </label>
+              </div>
+              <div class="option-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="autoRestart" />
+                  {{ t('autoRestart') }}
+                </label>
+              </div>
             </div>
 
             <button
@@ -251,6 +265,15 @@
             >
               {{ applyingUpdate ? t('updating') : t('applyUpdate') }}
             </button>
+
+            <!-- Progress Display -->
+            <div v-if="applyingUpdate && updateProgress" class="update-progress">
+              <div class="progress-stage">{{ getStageText(updateProgress.stage) }}</div>
+              <div class="progress-message">{{ updateProgress.message }}</div>
+              <div class="progress-bar">
+                <div class="progress-fill" :style="{ width: getProgressPercent() + '%' }"></div>
+              </div>
+            </div>
           </div>
 
           <div v-else class="no-updates">
@@ -262,8 +285,26 @@
         <!-- Update Result Message -->
         <div v-if="updateResult" :class="['update-message', updateResult.success ? 'success' : 'error']">
           {{ updateResult.message }}
-          <div v-if="updateResult.success" class="restart-notice">
-            {{ t('restartRequired') }}
+          <div v-if="updateResult.success && updateResult.clientChanged" class="change-info">
+            {{ t('clientChanged') }}
+          </div>
+          <div v-if="updateResult.success && updateResult.serverChanged" class="change-info">
+            {{ t('serverChanged') }}
+          </div>
+          <div v-if="updateResult.success && !updateResult.buildSuccess" class="build-warning">
+            {{ t('buildFailed') }}: {{ updateResult.buildOutput }}
+          </div>
+          <div v-if="updateResult.willRestart" class="restart-notice">
+            {{ t('serverRestarting') }}
+          </div>
+        </div>
+
+        <!-- Server Restarting Overlay -->
+        <div v-if="serverRestarting" class="restart-overlay">
+          <div class="restart-modal">
+            <div class="spinner"></div>
+            <div class="restart-text">{{ t('serverRestarting') }}</div>
+            <div class="reconnect-text">{{ t('reconnecting') }}</div>
           </div>
         </div>
       </div>
@@ -334,7 +375,12 @@ const checkingUpdates = ref(false)
 const updateCheck = ref(null)
 const applyingUpdate = ref(false)
 const stashLocal = ref(false)
+const autoBuild = ref(true)
+const autoRestart = ref(true)
 const updateResult = ref(null)
+const updateProgress = ref(null)
+const serverRestarting = ref(false)
+let progressInterval = null
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
@@ -482,26 +528,102 @@ async function checkForUpdates() {
   }
 }
 
+// Progress helper functions
+function getStageText(stage) {
+  const stages = {
+    checking: t.value('updating'),
+    stashing: t.value('stashChanges'),
+    fetching: t.value('stageFetching'),
+    merging: t.value('stageMerging'),
+    installing: t.value('stageInstalling'),
+    building: t.value('stageBuilding'),
+    'server-deps': t.value('stageInstalling'),
+    restarting: t.value('stageRestarting')
+  }
+  return stages[stage] || t.value('updating')
+}
+
+function getProgressPercent() {
+  const stages = ['checking', 'stashing', 'fetching', 'merging', 'installing', 'building', 'server-deps', 'restarting']
+  const currentIndex = stages.indexOf(updateProgress.value?.stage || 'checking')
+  return Math.min(((currentIndex + 1) / stages.length) * 100, 100)
+}
+
+async function pollProgress() {
+  try {
+    updateProgress.value = await api.getUpdateProgress()
+  } catch {
+    // Server might be restarting
+  }
+}
+
+function startProgressPolling() {
+  progressInterval = setInterval(pollProgress, 500)
+}
+
+function stopProgressPolling() {
+  if (progressInterval) {
+    clearInterval(progressInterval)
+    progressInterval = null
+  }
+}
+
+async function waitForServerRestart() {
+  serverRestarting.value = true
+  let attempts = 0
+  const maxAttempts = 60 // 30 seconds
+
+  while (attempts < maxAttempts) {
+    try {
+      await api.getUpdateStatus()
+      // Server is back online
+      serverRestarting.value = false
+      await loadUpdateStatus()
+      return true
+    } catch {
+      attempts++
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+  }
+
+  serverRestarting.value = false
+  return false
+}
+
 async function applyUpdate() {
   if (!selectedBranch.value) return
 
   applyingUpdate.value = true
   updateResult.value = null
+  updateProgress.value = null
+  startProgressPolling()
 
   try {
-    const result = await api.applyUpdates(selectedBranch.value, stashLocal.value)
+    const result = await api.applyUpdates(selectedBranch.value, {
+      stashLocal: stashLocal.value,
+      autoBuild: autoBuild.value,
+      autoRestart: autoRestart.value
+    })
     updateResult.value = result
-
-    // Refresh status
-    await loadUpdateStatus()
     updateCheck.value = null
+
+    // If server will restart, wait for it
+    if (result.willRestart) {
+      stopProgressPolling()
+      await waitForServerRestart()
+    } else {
+      // Refresh status
+      await loadUpdateStatus()
+    }
   } catch (err) {
     updateResult.value = {
       success: false,
       message: t.value('updateFailed') + ': ' + err.message
     }
   } finally {
+    stopProgressPolling()
     applyingUpdate.value = false
+    updateProgress.value = null
   }
 }
 
@@ -920,10 +1042,18 @@ onMounted(() => {
   font-size: 0.875rem;
 }
 
-.stash-option {
+.update-options {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border, #eee);
+}
+
+.option-row {
+  margin-bottom: 12px;
+}
+
+.option-row:last-child {
+  margin-bottom: 0;
 }
 
 .update-message {
@@ -946,6 +1076,100 @@ onMounted(() => {
 .restart-notice {
   margin-top: 8px;
   font-weight: 600;
+}
+
+.change-info {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.build-warning {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Progress Display */
+.update-progress {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg, #f0f0f0);
+  border-radius: 8px;
+}
+
+.progress-stage {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.progress-message {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+  margin-bottom: 12px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--border, #ddd);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary, #6366f1);
+  transition: width 0.3s ease;
+}
+
+/* Server Restarting Overlay */
+.restart-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.restart-modal {
+  background: var(--card-bg, white);
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border, #ddd);
+  border-top-color: var(--primary, #6366f1);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.restart-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text, #333);
+}
+
+.reconnect-text {
+  color: var(--text-secondary, #666);
+  font-size: 0.875rem;
 }
 
 .loading {

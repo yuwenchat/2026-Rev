@@ -128,10 +128,16 @@ export const api = {
 
   checkUpdates: (branch) => request(`/updates/check/${branch}`),
 
-  applyUpdates: (branch, stashLocal = false) => request(`/updates/apply/${branch}`, {
+  applyUpdates: (branch, options = {}) => request(`/updates/apply/${branch}`, {
     method: 'POST',
-    body: JSON.stringify({ stashLocal })
+    body: JSON.stringify({
+      stashLocal: options.stashLocal || false,
+      autoBuild: options.autoBuild !== false,
+      autoRestart: options.autoRestart !== false
+    })
   }),
+
+  getUpdateProgress: () => request('/updates/progress'),
 
   getUpdateHistory: (limit = 20) => request(`/updates/history?limit=${limit}`),
 
