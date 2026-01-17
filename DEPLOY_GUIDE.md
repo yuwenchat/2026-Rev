@@ -81,15 +81,15 @@ root密码: _______________（买的时候设置的）
 ### 买什么域名？
 
 ```
-例如：yuwenchat.com 或 yuwenchat.cn
+例如：chat.shawntv.co
 后缀 .com 约 55元/年
-后缀 .cn 约 29元/年
+后缀 .co 约 20元/年
 ```
 
 ### 买完后记下
 
 ```
-📝 你的域名: _______________（例如：yuwenchat.com）
+📝 你的域名: chat.shawntv.co
 ```
 
 ---
@@ -210,7 +210,7 @@ password: 12345678
 2. 地址栏输入：/www/wwwroot
 3. 按回车进入
 4. 点击上方「新建目录」
-5. 名称输入：yuwenchat
+5. 名称输入：chat.shawntv.co
 6. 点「确定」
 ```
 
@@ -219,7 +219,7 @@ password: 12345678
 **方法A：上传压缩包（推荐小白）**
 ```
 1. 把项目打包成 .zip 文件
-2. 双击进入 yuwenchat 目录
+2. 双击进入 chat.shawntv.co 目录
 3. 点击上方「上传」
 4. 选择你的 zip 文件
 5. 等待上传完成
@@ -231,7 +231,7 @@ password: 12345678
 1. 点击左侧「终端」
 2. 执行命令：
 
-cd /www/wwwroot/yuwenchat
+cd /www/wwwroot/chat.shawntv.co
 git clone https://github.com/你的用户名/yuwenchat.git .
 
 注意最后有个点！
@@ -240,7 +240,7 @@ git clone https://github.com/你的用户名/yuwenchat.git .
 ### 5.3 确认上传成功
 
 ```
-📍 位置：左侧菜单 →「文件」→ /www/wwwroot/yuwenchat/
+📍 位置：左侧菜单 →「文件」→ /www/wwwroot/chat.shawntv.co/
 
 你应该看到这些文件夹：
 ✅ client/      （前端代码）
@@ -264,7 +264,7 @@ git clone https://github.com/你的用户名/yuwenchat.git .
 ```bash
 # ===== 一键部署命令（全部复制，粘贴到终端，回车执行）=====
 
-cd /www/wwwroot/yuwenchat && \
+cd /www/wwwroot/chat.shawntv.co && \
 echo ">>> 1/5 创建数据目录" && \
 mkdir -p server/data && \
 echo ">>> 2/5 安装后端依赖（约1-2分钟）" && \
@@ -273,8 +273,8 @@ echo ">>> 3/5 创建环境变量文件" && \
 cat > .env << 'EOF'
 PORT=3000
 NODE_ENV=production
-JWT_SECRET=yuwenchat-secret-key-change-this-$(date +%s)
-CLIENT_URL=http://localhost
+JWT_SECRET=yuwenchat-secret-key-change-this-in-production
+CLIENT_URL=https://chat.shawntv.co
 DB_PATH=./data/chat.db
 EOF
 echo ">>> 4/5 安装前端依赖并构建（约2-3分钟）" && \
@@ -334,12 +334,11 @@ status 显示 errored = 失败，看日志：pm2 logs yuwenchat --err
 │                      添加站点                                │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  域名:     chat.你的域名.com                                 │
-│            ↑ 换成你自己的域名！                              │
+│  域名:     chat.shawntv.co                                  │
 │                                                             │
 │  备注:     (可以不填)                                        │
 │                                                             │
-│  根目录:   /www/wwwroot/yuwenchat/client/dist               │
+│  根目录:   /www/wwwroot/chat.shawntv.co/client/dist         │
 │            ↑↑↑ 重要！一定要填到 dist！↑↑↑                    │
 │                                                             │
 │  FTP:      不创建                                            │
@@ -357,8 +356,8 @@ status 显示 errored = 失败，看日志：pm2 logs yuwenchat --err
 ### 7.3 常见错误
 
 ```
-❌ 错误：根目录填成了 /www/wwwroot/yuwenchat
-✅ 正确：根目录要填 /www/wwwroot/yuwenchat/client/dist
+❌ 错误：根目录填成了 /www/wwwroot/chat.shawntv.co
+✅ 正确：根目录要填 /www/wwwroot/chat.shawntv.co/client/dist
 
 ❌ 错误：PHP版本选了 PHP-74
 ✅ 正确：PHP版本要选「纯静态」
@@ -382,15 +381,13 @@ status 显示 errored = 失败，看日志：pm2 logs yuwenchat --err
 
 ### 8.3 删除全部内容，粘贴以下配置
 
-⚠️ **注意：把 `chat.yourdomain.com` 换成你自己的域名！**
-
 ```nginx
 server {
     listen 80;
-    server_name chat.yourdomain.com;
+    server_name chat.shawntv.co;
 
     # ========== 前端文件 ==========
-    root /www/wwwroot/yuwenchat/client/dist;
+    root /www/wwwroot/chat.shawntv.co/client/dist;
     index index.html;
 
     # 前端路由
@@ -424,8 +421,8 @@ server {
     }
 
     # 日志
-    access_log /www/wwwlogs/yuwenchat.access.log;
-    error_log /www/wwwlogs/yuwenchat.error.log;
+    access_log /www/wwwlogs/chat.shawntv.co.access.log;
+    error_log /www/wwwlogs/chat.shawntv.co.error.log;
 }
 ```
 
@@ -456,6 +453,7 @@ nginx: configuration file /www/server/nginx/conf/nginx.conf test is successful
 ```
 阿里云：https://dc.console.aliyun.com
 腾讯云：https://console.cloud.tencent.com/cns
+Cloudflare：https://dash.cloudflare.com
 ```
 
 ### 9.2 添加解析记录
@@ -466,9 +464,8 @@ nginx: configuration file /www/server/nginx/conf/nginx.conf test is successful
 填写：
 ┌─────────────────────────────────────────────────────┐
 │  记录类型:   A                                       │
-│  主机记录:   chat     ← 如果想用 chat.xxx.com       │
-│             （或 @ 如果想用 xxx.com）                │
-│  记录值:     47.98.123.456  ← 你的服务器IP          │
+│  主机记录:   chat                                    │
+│  记录值:     你的服务器IP（例如 47.98.123.456）       │
 │  TTL:        默认                                    │
 └─────────────────────────────────────────────────────┘
 
@@ -481,7 +478,7 @@ nginx: configuration file /www/server/nginx/conf/nginx.conf test is successful
 域名解析需要 1-10 分钟生效
 
 验证方法（在终端执行）：
-ping chat.你的域名.com
+ping chat.shawntv.co
 
 如果显示你的服务器IP，说明解析成功！
 ```
@@ -500,7 +497,7 @@ ping chat.你的域名.com
 
 ```
 1. 点击「Let's Encrypt」选项卡
-2. 勾选你的域名
+2. 勾选你的域名 chat.shawntv.co
 3. 点击「申请」
 4. 等待 30 秒左右
 5. 申请成功后，开启「强制HTTPS」开关
@@ -555,7 +552,7 @@ ping chat.你的域名.com
 ### 打开浏览器访问
 
 ```
-https://chat.你的域名.com
+https://chat.shawntv.co
 ```
 
 ### 检查清单
@@ -589,10 +586,10 @@ pm2 logs yuwenchat --err
 
 ```bash
 # 检查 dist 目录是否存在
-ls /www/wwwroot/yuwenchat/client/dist/
+ls /www/wwwroot/chat.shawntv.co/client/dist/
 
 # 如果不存在，重新构建
-cd /www/wwwroot/yuwenchat/client
+cd /www/wwwroot/chat.shawntv.co/client
 npm run build
 ```
 
@@ -630,7 +627,7 @@ npm install
 
 ```bash
 # ===== 重新部署（如果搞砸了）=====
-cd /www/wwwroot/yuwenchat/server && npm install && \
+cd /www/wwwroot/chat.shawntv.co/server && npm install && \
 cd ../client && npm install && npm run build && \
 cd ../server && pm2 restart yuwenchat
 
@@ -661,7 +658,7 @@ nginx -s reload
 
 记得：
 1. 把默认密码改掉
-2. 定期备份数据库（`/www/wwwroot/yuwenchat/server/data/chat.db`）
+2. 定期备份数据库（`/www/wwwroot/chat.shawntv.co/server/data/chat.db`）
 3. 有问题看日志：`pm2 logs yuwenchat`
 
 享受你的私密聊天应用吧！
