@@ -103,7 +103,27 @@ const translations = {
 
     // File
     fileTooLarge: 'File too large. Maximum size is 10MB.',
-    uploadFailed: 'Failed to send file'
+    uploadFailed: 'Failed to send file',
+
+    // Updates
+    updates: 'Updates',
+    currentVersion: 'Current Version',
+    branch: 'Branch',
+    commit: 'Commit',
+    checkUpdates: 'Check Updates',
+    applyUpdate: 'Apply Update',
+    selectBranch: 'Select Branch',
+    noUpdates: 'Already up to date',
+    updatesAvailable: 'Updates available',
+    filesChanged: 'Files changed',
+    newCommits: 'New commits',
+    updating: 'Updating...',
+    updateSuccess: 'Update successful! Please restart the server.',
+    updateFailed: 'Update failed',
+    localChanges: 'Local changes detected',
+    stashChanges: 'Stash local changes',
+    databaseWarning: 'Warning: Database files may be affected',
+    restartRequired: 'Restart Required'
   },
   zh: {
     // App
@@ -206,7 +226,27 @@ const translations = {
 
     // File
     fileTooLarge: '文件太大，最大支持10MB。',
-    uploadFailed: '发送文件失败'
+    uploadFailed: '发送文件失败',
+
+    // Updates
+    updates: '系统更新',
+    currentVersion: '当前版本',
+    branch: '分支',
+    commit: '提交',
+    checkUpdates: '检查更新',
+    applyUpdate: '应用更新',
+    selectBranch: '选择分支',
+    noUpdates: '已是最新版本',
+    updatesAvailable: '有可用更新',
+    filesChanged: '文件变更',
+    newCommits: '新提交',
+    updating: '更新中...',
+    updateSuccess: '更新成功！请重启服务器。',
+    updateFailed: '更新失败',
+    localChanges: '检测到本地修改',
+    stashChanges: '暂存本地修改',
+    databaseWarning: '警告：数据库文件可能受影响',
+    restartRequired: '需要重启'
   }
 }
 

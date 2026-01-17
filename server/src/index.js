@@ -12,6 +12,7 @@ import groupsRoutes from './routes/groups.js';
 import messagesRoutes from './routes/messages.js';
 import adminRoutes from './routes/admin.js';
 import uploadRoutes from './routes/upload.js';
+import updatesRoutes from './routes/updates.js';
 import { socketAuthMiddleware } from './middleware/auth.js';
 import { setupSocketHandlers } from './socket/handler.js';
 
@@ -49,6 +50,7 @@ app.use('/api/groups', groupsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/updates', updatesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

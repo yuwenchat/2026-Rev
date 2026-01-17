@@ -121,6 +121,20 @@ export const api = {
     method: 'DELETE'
   }),
 
+  // Updates
+  getUpdateStatus: () => request('/updates/status'),
+
+  getUpdateBranches: () => request('/updates/branches'),
+
+  checkUpdates: (branch) => request(`/updates/check/${branch}`),
+
+  applyUpdates: (branch, stashLocal = false) => request(`/updates/apply/${branch}`, {
+    method: 'POST',
+    body: JSON.stringify({ stashLocal })
+  }),
+
+  getUpdateHistory: (limit = 20) => request(`/updates/history?limit=${limit}`),
+
   // Upload
   uploadFile: async (file) => {
     const token = localStorage.getItem('token')
