@@ -3,7 +3,13 @@
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-header">
-        <h2>{{ t('appName') }}</h2>
+        <div class="app-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="32" height="32">
+            <path d="M50 8L10 40V85C10 88.3 12.7 91 16 91H84C87.3 91 90 88.3 90 85V40L50 8Z" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <ellipse cx="50" cy="58" rx="22" ry="16" fill="currentColor"/>
+            <path d="M32 62C32 62 28 70 24 74" stroke="currentColor" stroke-width="7" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
         <div class="header-actions">
           <router-link v-if="userStore.user?.isAdmin" to="/admin" class="icon-btn" :title="t('adminPanel')">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -480,9 +486,15 @@ onMounted(async () => {
   border-bottom: 1px solid var(--border);
 }
 
-.sidebar-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
+.app-logo {
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+}
+
+.app-logo svg {
+  width: 32px;
+  height: 32px;
 }
 
 .header-actions {
