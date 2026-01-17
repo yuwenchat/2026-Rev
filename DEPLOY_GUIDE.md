@@ -756,6 +756,173 @@ nginx -s reload
 
 ---
 
+# 🔄 手动更新到最新版本
+
+> 当有新功能发布时，按照这个指南更新
+
+## 更新前必读
+
+```
+⚠️ 更新会保留你的数据！
+✅ 聊天记录 - 不会丢失
+✅ 用户账号 - 不会丢失
+✅ 好友关系 - 不会丢失
+✅ 头像设置 - 不会丢失
+
+新版本的数据库变更会自动迁移，不需要手动操作！
+```
+
+## 更新步骤（3分钟搞定）
+
+### 方法一：一键更新命令 ⭐推荐⭐
+
+打开宝塔终端，复制粘贴这整段命令：
+
+```bash
+# ===== 一键更新命令（全部复制，粘贴，回车）=====
+
+cd /www/wwwroot/chat.shawntv.co && \
+echo ">>> 1/5 备份数据库" && \
+cp server/data/chat.db server/data/chat.db.backup.$(date +%Y%m%d_%H%M%S) && \
+echo ">>> 2/5 拉取最新代码" && \
+git pull origin main && \
+echo ">>> 3/5 更新后端依赖" && \
+cd server && npm install --registry=https://registry.npmmirror.com && \
+echo ">>> 4/5 更新前端并重新构建" && \
+cd ../client && npm install --registry=https://registry.npmmirror.com && npm run build && \
+echo ">>> 5/5 重启后端服务" && \
+cd ../server && pm2 restart yuwenchat && \
+echo "" && \
+echo "========================================" && \
+echo "✅ 更新完成！刷新网页即可看到新版本" && \
+echo "========================================"
+```
+
+### 方法二：分步操作（如果你想了解每一步）
+
+#### 第1步：备份数据库（保险起见）
+
+```bash
+cd /www/wwwroot/chat.shawntv.co
+cp server/data/chat.db server/data/chat.db.backup
+```
+
+#### 第2步：拉取最新代码
+
+```bash
+cd /www/wwwroot/chat.shawntv.co
+git pull origin main
+```
+
+如果提示冲突，执行：
+```bash
+git stash
+git pull origin main
+```
+
+#### 第3步：更新后端依赖
+
+```bash
+cd /www/wwwroot/chat.shawntv.co/server
+npm install
+```
+
+#### 第4步：重新构建前端
+
+```bash
+cd /www/wwwroot/chat.shawntv.co/client
+npm install
+npm run build
+```
+
+#### 第5步：重启后端
+
+```bash
+pm2 restart yuwenchat
+```
+
+#### 第6步：验证更新
+
+```bash
+# 检查后端状态
+pm2 list
+
+# 应该显示 status: online
+```
+
+然后刷新网页，检查新功能是否生效！
+
+---
+
+## 更新后常见问题
+
+### ❌ git pull 报错 "local changes would be overwritten"
+
+```bash
+# 暂存本地修改
+git stash
+
+# 重新拉取
+git pull origin main
+
+# 如果需要恢复本地修改
+git stash pop
+```
+
+### ❌ npm install 报错
+
+```bash
+# 清除缓存重试
+rm -rf node_modules package-lock.json
+npm install --registry=https://registry.npmmirror.com
+```
+
+### ❌ 页面没变化
+
+```bash
+# 1. 确认前端重新构建了
+ls -la /www/wwwroot/chat.shawntv.co/client/dist/
+
+# 2. 清除浏览器缓存（Ctrl+Shift+R 或 Cmd+Shift+R）
+
+# 3. 重载 Nginx
+nginx -s reload
+```
+
+### ❌ 后端启动失败
+
+```bash
+# 查看错误日志
+pm2 logs yuwenchat --err --lines 50
+
+# 常见原因：依赖没装好，重新安装
+cd /www/wwwroot/chat.shawntv.co/server
+rm -rf node_modules
+npm install
+pm2 restart yuwenchat
+```
+
+---
+
+## 回滚到旧版本（如果新版本有问题）
+
+```bash
+# 恢复数据库备份
+cd /www/wwwroot/chat.shawntv.co/server/data
+cp chat.db.backup chat.db
+
+# 回滚代码到上一个版本
+cd /www/wwwroot/chat.shawntv.co
+git log --oneline -5  # 查看最近5个版本
+git checkout <之前的版本号>
+
+# 重新构建
+cd client && npm run build
+cd ../server && pm2 restart yuwenchat
+```
+
+---
+
 # 🎊 恭喜！
 
 如果你看到了聊天界面，说明部署成功了！
