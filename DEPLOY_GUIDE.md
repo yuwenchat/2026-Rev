@@ -1086,16 +1086,39 @@ tail -100 /www/wwwlogs/chat.shawntv.co.error.log
 
 > 管理用户、群组、查看统计数据
 
-## 默认管理员账号
+## 设置管理员账号
+
+由于端对端加密的特性，**不能**使用服务端自动创建的 admin 账号（缺少加密密钥）。
+
+### 正确的方法：把你的普通账号设为管理员
+
+**第1步：在网站上注册一个普通账号**
+
+访问 https://chat.shawntv.co 注册账号（比如用户名 `myadmin`）
+
+**第2步：在服务器终端运行脚本设置管理员**
+
+```bash
+cd /www/wwwroot/chat.shawntv.co/server
+node scripts/make-admin.js
+```
+
+脚本会显示所有用户，输入你的用户名：
 
 ```
-⚠️⚠️⚠️ 首次部署后必须立即修改密码！⚠️⚠️⚠️
+=== Set User as Admin ===
 
-用户名: admin
-密码:   admin1
+Existing users:
+  - myadmin
+  - alice
 
-登录后第一件事：设置 → 修改密码！
+Enter username to make admin: myadmin
+
+✓ User "myadmin" is now an admin!
+They can now access /admin after logging in.
 ```
+
+**第3步：重新登录网站，左上角会出现管理后台入口 ⚙️**
 
 ## 访问管理后台
 
@@ -1156,6 +1179,33 @@ tail -100 /www/wwwlogs/chat.shawntv.co.error.log
 **⚠️ 注意：** 消息内容是加密的，管理员看到的是加密后的乱码，无法查看明文！
 
 ## 添加其他管理员
+
+### 方法一：使用命令行脚本（推荐）
+
+在服务器终端运行以下命令：
+
+```bash
+cd /www/wwwroot/chat.shawntv.co/server
+node scripts/make-admin.js
+```
+
+脚本会显示所有用户列表，输入用户名即可设为管理员：
+
+```
+=== Set User as Admin ===
+
+Existing users:
+  - alice
+  - bob
+  - charlie [ADMIN]
+
+Enter username to make admin: alice
+
+✓ User "alice" is now an admin!
+They can now access /admin after logging in.
+```
+
+### 方法二：通过管理后台界面
 
 1. 让用户先注册普通账号
 2. 用现有管理员登录管理后台
