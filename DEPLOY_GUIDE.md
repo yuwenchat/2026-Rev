@@ -923,6 +923,165 @@ cd ../server && pm2 restart yuwenchat
 
 ---
 
+# 🔧 完全重装指南（从零开始）
+
+> 如果你的系统出了问题，或者想完全重新部署，按照这个指南操作
+
+## 什么时候需要完全重装？
+
+```
+🔸 系统配置搞乱了，想从头来
+🔸 换了新服务器
+🔸 数据不需要了，想清空重来
+🔸 遇到无法解决的错误
+```
+
+## 完全重装步骤
+
+### 📋 第一阶段：清理旧环境（如果有的话）
+
+如果服务器上已经部署过，先清理：
+
+```bash
+# ===== 1. 停止并删除旧的后端服务 =====
+pm2 stop yuwenchat 2>/dev/null
+pm2 delete yuwenchat 2>/dev/null
+pm2 save
+
+# ===== 2. 备份数据库（如果需要保留数据）=====
+# 如果你想保留聊天记录和用户数据：
+cp /www/wwwroot/chat.shawntv.co/server/data/chat.db ~/chat.db.backup
+
+# ===== 3. 删除旧代码 =====
+rm -rf /www/wwwroot/chat.shawntv.co
+
+# ===== 4. 在宝塔面板删除旧网站 =====
+# 手动操作：宝塔 → 网站 → 找到网站 → 删除（不要勾选删除目录）
+```
+
+### 📋 第二阶段：全新安装
+
+#### 步骤 1：确认基础软件已安装
+
+在宝塔软件商店确认这些已安装：
+- ✅ PM2 管理器
+- ✅ Nginx
+
+如果没装，参考上面「步骤 4️⃣」安装。
+
+#### 步骤 2：创建项目目录并下载代码
+
+```bash
+# 创建目录
+mkdir -p /www/wwwroot/chat.shawntv.co
+
+# 进入目录
+cd /www/wwwroot/chat.shawntv.co
+
+# 下载代码（选择一种方式）
+```
+
+**方式A：从 GitHub 克隆（推荐）**
+```bash
+git clone https://github.com/你的用户名/yuwenchat.git .
+```
+
+**方式B：上传压缩包**
+```
+通过宝塔文件管理器上传 zip 文件，然后解压到当前目录
+```
+
+#### 步骤 3：一键部署命令
+
+```bash
+# ===== 复制这整段命令执行 =====
+
+cd /www/wwwroot/chat.shawntv.co && \
+echo ">>> 1/6 创建数据目录" && \
+mkdir -p server/data && \
+echo ">>> 2/6 安装后端依赖" && \
+cd server && npm install --registry=https://registry.npmmirror.com && \
+echo ">>> 3/6 创建环境变量" && \
+cat > .env << 'EOF'
+PORT=3000
+NODE_ENV=production
+JWT_SECRET=yuwenchat-secret-key-$(date +%s)-change-me
+CLIENT_URL=https://你的域名
+DB_PATH=./data/chat.db
+EOF
+echo ">>> 4/6 安装前端依赖" && \
+cd ../client && npm install --registry=https://registry.npmmirror.com && \
+echo ">>> 5/6 构建前端" && \
+npm run build && \
+echo ">>> 6/6 启动后端" && \
+cd ../server && pm2 start src/index.js --name yuwenchat && pm2 save && \
+echo "" && \
+echo "========================================" && \
+echo "✅ 部署完成！" && \
+echo "========================================" && \
+echo "下一步：配置网站和 Nginx"
+```
+
+**⚠️ 重要：把 `你的域名` 替换成你的实际域名！**
+
+#### 步骤 4：恢复数据（如果之前备份了）
+
+```bash
+# 如果你之前备份了数据库，想恢复数据：
+cp ~/chat.db.backup /www/wwwroot/chat.shawntv.co/server/data/chat.db
+
+# 重启后端让它读取数据
+pm2 restart yuwenchat
+```
+
+#### 步骤 5：配置网站和 Nginx
+
+按照上面的「步骤 7️⃣」和「步骤 8️⃣」操作：
+
+1. **添加网站**
+   - 域名：你的域名
+   - 根目录：`/www/wwwroot/chat.shawntv.co/client/dist`
+   - PHP版本：纯静态
+
+2. **配置 Nginx**
+   - 修改配置文件，添加 API 反向代理和 WebSocket 支持
+   - 参考「步骤 8️⃣」的配置
+
+3. **申请 SSL 证书**
+   - 宝塔 → 网站 → 设置 → SSL → Let's Encrypt → 申请
+
+4. **测试访问**
+   - 浏览器打开 https://你的域名
+   - 应该看到登录页面
+
+---
+
+## 📋 快速检查清单
+
+部署完成后，逐项检查：
+
+```
+□ pm2 list 显示 yuwenchat 状态为 online
+□ https://域名 能打开登录页面
+□ 能成功注册新用户
+□ 能成功登录
+□ 能添加好友
+□ 能发送消息
+□ 对方能收到消息（实时）
+□ 刷新页面后聊天记录还在
+```
+
+如果某项失败，查看日志：
+```bash
+# 后端日志
+pm2 logs yuwenchat --lines 100
+
+# Nginx 错误日志
+tail -100 /www/wwwlogs/chat.shawntv.co.error.log
+```
+
+---
+
 # 🎊 恭喜！
 
 如果你看到了聊天界面，说明部署成功了！
