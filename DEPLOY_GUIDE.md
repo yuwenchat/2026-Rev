@@ -232,7 +232,7 @@ password: 12345678
 2. 执行命令：
 
 cd /www/wwwroot/chat.shawntv.co
-git clone https://github.com/你的用户名/yuwenchat.git .
+git clone https://github.com/yuwenchat/2026-Rev.git .
 
 注意最后有个点！
 ```
@@ -563,7 +563,7 @@ Cloudflare：https://dash.cloudflare.com
 ### 9.2 添加解析记录
 
 ```
-点击你的域名 → 点击「添加记录」
+点击 chat.shawntv.co → 点击「添加记录」
 
 填写：
 ┌─────────────────────────────────────────────────────┐
@@ -983,7 +983,7 @@ cd /www/wwwroot/chat.shawntv.co
 
 **方式A：从 GitHub 克隆（推荐）**
 ```bash
-git clone https://github.com/你的用户名/yuwenchat.git .
+git clone https://github.com/yuwenchat/2026-Rev.git .
 ```
 
 **方式B：上传压缩包**
@@ -1006,7 +1006,7 @@ cat > .env << 'EOF'
 PORT=3000
 NODE_ENV=production
 JWT_SECRET=yuwenchat-secret-key-$(date +%s)-change-me
-CLIENT_URL=https://你的域名
+CLIENT_URL=https://chat.shawntv.co
 DB_PATH=./data/chat.db
 EOF
 echo ">>> 4/6 安装前端依赖" && \
@@ -1022,7 +1022,7 @@ echo "========================================" && \
 echo "下一步：配置网站和 Nginx"
 ```
 
-**⚠️ 重要：把 `你的域名` 替换成你的实际域名！**
+**域名已设置为 chat.shawntv.co，如需修改请编辑 server/.env 文件**
 
 #### 步骤 4：恢复数据（如果之前备份了）
 
@@ -1039,7 +1039,7 @@ pm2 restart yuwenchat
 按照上面的「步骤 7️⃣」和「步骤 8️⃣」操作：
 
 1. **添加网站**
-   - 域名：你的域名
+   - 域名：chat.shawntv.co
    - 根目录：`/www/wwwroot/chat.shawntv.co/client/dist`
    - PHP版本：纯静态
 
@@ -1051,7 +1051,7 @@ pm2 restart yuwenchat
    - 宝塔 → 网站 → 设置 → SSL → Let's Encrypt → 申请
 
 4. **测试访问**
-   - 浏览器打开 https://你的域名
+   - 浏览器打开 https://chat.shawntv.co
    - 应该看到登录页面
 
 ---

@@ -2,6 +2,10 @@
 
 [English](#english) | [中文](#中文)
 
+**Live Demo / 在线演示**: [https://chat.shawntv.co](https://chat.shawntv.co)
+
+**Repository / 仓库**: [https://github.com/yuwenchat/2026-Rev](https://github.com/yuwenchat/2026-Rev)
+
 ---
 
 # English
