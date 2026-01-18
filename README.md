@@ -117,7 +117,3 @@ See [DEPLOY_GUIDE.md](./DEPLOY_GUIDE.md) for detailed deployment instructions.
 - Your password **never** leaves your device
 - Private keys are **never** stored unencrypted on the server
 - All encryption happens **client-side**
-
-## License
-
-MIT
