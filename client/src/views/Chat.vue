@@ -1015,8 +1015,12 @@ onMounted(async () => {
 .message-image {
   max-width: 250px;
   max-height: 250px;
+  width: auto;
+  height: auto;
+  display: block;
   border-radius: 8px;
   cursor: pointer;
+  object-fit: contain;
 }
 
 .file-download {

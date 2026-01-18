@@ -41,7 +41,7 @@ setupSocketHandlers(io);
 
 // Serve uploaded files
 const UPLOAD_DIR = process.env.UPLOAD_DIR || join(__dirname, '../uploads');
-app.use('/uploads', express.static(UPLOAD_DIR));
+app.use('/api/uploads', express.static(UPLOAD_DIR));
 
 // API routes
 app.use('/api/auth', authRoutes);

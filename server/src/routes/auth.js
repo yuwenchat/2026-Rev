@@ -249,7 +249,7 @@ router.post('/avatar/upload', authMiddleware, (req, res) => {
     const filepath = join(uploadsDir, filename);
     writeFileSync(filepath, buffer);
 
-    const avatarUrl = `/uploads/avatars/${filename}`;
+    const avatarUrl = `/api/uploads/avatars/${filename}`;
     db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatarUrl, req.userId);
 
     res.json({ success: true, avatarUrl });

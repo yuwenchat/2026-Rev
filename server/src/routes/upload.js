@@ -90,7 +90,7 @@ router.post('/', authMiddleware, async (req, res) => {
       originalName: filePart.filename,
       size: filePart.data.length,
       mimeType,
-      url: `/uploads/${filename}`
+      url: `/api/uploads/${filename}`
     });
   } catch (err) {
     console.error('Upload error:', err);
