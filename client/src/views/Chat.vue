@@ -4,11 +4,7 @@
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-header">
         <div class="app-logo">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="32" height="32">
-            <path d="M50 8L10 40V85C10 88.3 12.7 91 16 91H84C87.3 91 90 88.3 90 85V40L50 8Z" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <ellipse cx="50" cy="58" rx="22" ry="16" fill="currentColor"/>
-            <path d="M32 62C32 62 28 70 24 74" stroke="currentColor" stroke-width="7" stroke-linecap="round" fill="none"/>
-          </svg>
+          <img src="/favicon.png" alt="Logo" width="32" height="32" />
         </div>
         <div class="header-actions">
           <router-link v-if="userStore.user?.isAdmin" to="/admin" class="icon-btn" :title="t('adminPanel')">
@@ -616,9 +612,10 @@ onMounted(async () => {
   align-items: center;
 }
 
-.app-logo svg {
+.app-logo img {
   width: 32px;
   height: 32px;
+  object-fit: contain;
 }
 
 .header-actions {
