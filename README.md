@@ -306,4 +306,4 @@ npm run dev
 
 ## License / 许可证
 
-MIT
+WTFPL
